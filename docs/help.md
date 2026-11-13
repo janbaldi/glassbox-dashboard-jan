@@ -3,7 +3,7 @@
 The dashboard has two halves, as tabs along the top.
 
 The **monitoring tabs** (Overview, Pipeline, Patient, Process, Final product,
-Sites, CPV) answer *where are we*: they follow the whole manufacturing
+Materials, Sites, CPV) answer *where are we*: they follow the whole manufacturing
 process, from apheresis to infusion, and compare the newest batches with the
 ones before them. Every number on them is calculated live from the data.
 
@@ -26,7 +26,7 @@ the recent window with the baseline, and the line under each page title says
 which batches are in each.
 
 Set them in the sidebar: **Period** (last 6, 12 or 24 months, all data, or
-custom dates), **Recent window**, **Manufacturing sites** and
+custom dates), **Recent window**, **Baseline**, **Manufacturing sites** and
 **Re-manufactured batches**. The choices are shared by all monitoring tabs.
 
 The period ends at the **data's last date** (the latest date recorded, shown
@@ -34,8 +34,23 @@ at the bottom of the sidebar as *Data as of*), not at today: the dashboard
 shows the data as it was pulled.
 
 A baseline should be a time you trust. When the baseline itself contains a
-shift, the comparison is with the average of before and after it; shorten the
-period, or use custom dates, to start the baseline after the shift.
+shift, the comparison is with the average of before and after it.
+
+### Fixed baseline
+
+**Baseline** in the sidebar chooses what the recent window is compared with:
+
+- **Rest of the period** (the default): everything in the period before the
+  recent window. It moves along as new data comes in.
+- **Fixed dates**: one date range you pick, wherever it lies, for example
+  the months after the last process change. It stays the same from month to
+  month, so the scorecard, the control limits on the CPV tab and the CPV
+  report all keep one reference. Days of the recent window are never part
+  of it.
+
+With a fixed baseline outside the period, the plots show the baseline
+batches and the period, with the gap between them. Set `monitor.baseline`
+(`start`, `end`) in the config to open the dashboard on a fixed baseline.
 
 ### The scorecard and its status
 
@@ -144,6 +159,29 @@ parameter.
 Recent batches without an OOS result yet are left out of the rates; the page
 says how many.
 
+### Materials
+
+Raw material and vector lots: did a parameter move when a lot changed? Pick
+the **parameter** at the top. For every material (the categorical parameters
+with variation source *Raw material / vector*), each lot is compared with
+the lot used before it (Mann-Whitney; lots in order of their median date of
+use; lots with fewer than 10 values are skipped). The q-values are corrected
+over every lot change of every material.
+
+The table lists the materials, those with the most lot changes at which the
+value **moved** (q < 0.05) first. Click one for the plot: every batch, each
+lot's median as a bar over the time the lot was in use, and a dashed line at
+each lot change where the value moved, labelled with the new lot. The table
+under it has every lot change with both medians and the shift in within-lot
+standard deviations.
+
+A lot change shows *when* the value moved, not *why*. When a parameter
+shifts on a date, every material whose lot changed near that date shows a
+move, and so would a change of site or procedure. Use the table to see
+which materials changed together, and what you know of the process to tell
+them apart. **Investigate** opens the parameter on the Investigation tab,
+coloured by the material's lots.
+
 ### Sites
 
 How the manufacturing sites compare over the whole period: the OOS rate per
@@ -172,6 +210,15 @@ in 1,000 cells). A row of dots is a shift.
 
 Click a row in the table for the parameter's control chart, with EWMA and
 CUSUM switched on.
+
+**CPV report (PDF)** downloads the view as a report for the file: the scope
+(parameter set, period, recent window, baseline, filters), a summary with
+the OOS rate, the heat map, the table of parameters, control charts of the
+parameters that are out of control, shifted or on watch (up to 12), the
+methods, and the provenance (file hashes, versions). For a monthly report,
+set the period and the recent window to the month's end, pick a fixed
+baseline so every month is judged against the same reference, and download
+one report per parameter set.
 
 ### What the tabs need from the data
 
@@ -1081,7 +1128,8 @@ data or metadata files are picked up the next time the page updates.
   `OOS? (Y/N)` and every column ending in `OOS (Y/N)`), `true_values`,
   `stages` (the pipeline stages in order: a `label` with a date `column` or a
   `process_day`), `closed_from` (the stage from which a batch has left the
-  pipeline), `key_cqas`, and `group_columns` (the metadata columns holding
+  pipeline), `key_cqas`, `baseline` (`start` and `end` of a fixed baseline),
+  `material_sources` (the variation sources whose parameters are lots), and `group_columns` (the metadata columns holding
   functional type, process day and variation source).
 - `trend`: the trend fit settings (see *Trend fit*).
 - `spc`: the EWMA and CUSUM settings: `lam`, `L`, `k` and `h` (see *EWMA

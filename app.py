@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from cart_dashboard.views import cpv, groups, help_page, investigation, nav, overview, pipeline, sites
+from cart_dashboard.views import cpv, groups, help_page, investigation, materials, nav, overview, pipeline, sites
 
 st.set_page_config(page_title="CAR-T manufacturing dashboard", layout="wide", initial_sidebar_state="expanded")
 
@@ -49,6 +49,7 @@ nav.PAGES.update(
     patient=st.Page(groups.patient, title="Patient", icon=":material/bloodtype:", url_path="patient"),
     process=st.Page(groups.process, title="Process", icon=":material/science:", url_path="process"),
     product=st.Page(groups.product, title="Final product", icon=":material/verified:", url_path="product"),
+    materials=st.Page(materials.render, title="Materials", icon=":material/inventory_2:", url_path="materials"),
     sites=st.Page(sites.render, title="Sites", icon=":material/factory:", url_path="sites"),
     cpv=st.Page(cpv.render, title="CPV", icon=":material/monitoring:", url_path="cpv"),
     investigation=st.Page(investigation.render, title="Investigation", icon=":material/query_stats:", url_path="investigation"),

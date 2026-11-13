@@ -173,6 +173,7 @@ PAGES = {
     "process": "from cart_dashboard.views import groups; groups.process()",
     "product": "from cart_dashboard.views import groups; groups.product()",
     "sites": "from cart_dashboard.views import sites; sites.render()",
+    "materials": "from cart_dashboard.views import materials; materials.render()",
     "cpv": "from cart_dashboard.views import cpv; cpv.render()",
 }
 
@@ -191,6 +192,14 @@ def test_every_monitoring_page_runs_on_the_sample_data(page, sample, monkeypatch
     at.session_state["mon_period"] = "All data"
     at.run()
     assert not at.exception, [e.value for e in at.exception]
+    # A fixed baseline, away from the period.
+    from datetime import date
+    at.session_state["mon_period"] = "Last 6 months"
+    at.session_state["mon_baseline"] = "Fixed dates"
+    at.session_state["mon_baseline_dates"] = (date(2024, 6, 1), date(2024, 12, 31))
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("2024-06-01 to 2024-12-31 (fixed)" in m.value for m in at.markdown)
 
 
 def test_the_app_opens_on_the_overview(sample, monkeypatch):
@@ -201,3 +210,58 @@ def test_the_app_opens_on_the_overview(sample, monkeypatch):
     assert not at.exception, [e.value for e in at.exception]
     labels = [m.label for m in at.metric]
     assert "In process now" in labels and "Parameters shifted" in labels
+
+
+def test_fixed_baseline_replaces_the_rest_of_the_period():
+    dates = pd.Series(pd.date_range("2024-01-01", "2025-12-31", freq="D"))
+    recent, baseline = M.windows(dates, "2025-01-01", "2025-12-31", 30, fixed=("2024-03-01", "2024-05-31"))
+    assert recent.sum() == 30 and baseline.sum() == 92
+    assert dates[baseline].min() == pd.Timestamp("2024-03-01") and dates[baseline].max() == pd.Timestamp("2024-05-31")
+    recent, baseline = M.windows(dates, "2025-01-01", "2025-12-31", 30, fixed=("2025-11-01", "2025-12-31"))
+    assert not (recent & baseline).any() and baseline.sum() == 31  # the recent window is never its own baseline
+
+
+def test_lot_changes_find_the_lot_that_moved_the_value():
+    rng = np.random.default_rng(5)
+    n = 300
+    dates = pd.Series(pd.date_range("2025-01-01", periods=n, freq="D"))
+    lots = pd.Series([f"L{i // 50 + 1}" for i in range(n)])  # six lots of 50 batches, one after the other
+    values = pd.Series(rng.normal(10, 1, n)) + (lots.isin(["L4", "L5", "L6"])) * 2.0  # the value steps up with lot L4
+    other = pd.Series([f"M{(i + 25) // 60 + 1}" for i in range(n)])
+    rows = pd.Series(True, index=dates.index)
+    table = M.lot_table(lots, dates, rows)
+    assert table["lot"].tolist() == [f"L{i}" for i in range(1, 7)] and (table["n"] == 50).all()
+    changes = M.lot_changes(values, lots, dates, rows)
+    assert len(changes) == 5 and changes["after"].tolist() == ["L2", "L3", "L4", "L5", "L6"]
+    step = changes.set_index("after").loc["L4"]
+    assert step["shift"] == pytest.approx(2, abs=0.6) and step["p"] < 1e-6 and step["date"] == pd.Timestamp("2025-05-31")
+    summary, every = M.material_screen(values, pd.DataFrame({"A lot": lots, "B lot": other}), dates, rows)
+    a = summary.set_index("material").loc["A lot"]
+    assert (a["lots"], a["tested"], a["moved"]) == (6, 5, 1) and a["shift"] == pytest.approx(2, abs=0.6)
+    assert set(every.loc[(every["material"] == "A lot") & (every["q"] < 0.05), "after"]) == {"L4"}
+    few = M.lot_changes(values, pd.Series([f"X{i // 5}" for i in range(n)]), dates, rows)  # 5 batches per lot: too few
+    assert few.empty
+
+
+def test_cpv_report_builds_a_pdf(sample):
+    from cart_dashboard import cpv_report as R
+    from cart_dashboard.report import provenance
+
+    _, cfg, df, params = sample
+    values, units = M.numeric_frame(df, params, cfg)
+    names = ["FP Flow CAR+ (%)", "FP Flow CD3+ (%)", "Endotoxin (EU/mL)", "IFN Gamma"]
+    dates = df[cfg.col("manufacturing_date")]
+    recent, baseline = M.windows(dates, "2025-09-01", "2026-09-01", 90)
+    period = recent | baseline
+    z = M.monthly_z(values[names], dates, period, baseline)
+    score = M.scorecard(values[names], dates, recent, baseline, cfg.spc).set_index("parameter").reindex(z.index)
+    table = pd.DataFrame({
+        "Parameter": z.index, "Process day": "Final Product", "Months out, recent": (z.iloc[:, -3:].abs() > 3).sum(axis=1).to_numpy(),
+        "Months out, period": (z.abs() > 3).sum(axis=1).to_numpy(), "Beyond ±3 SD": score["outside"].to_numpy(),
+        "EWMA signals": score["ewma"].to_numpy(), "Shift (SD)": score["shift"].to_numpy(), "status": score["status"].to_numpy(),
+    })
+    pdf = R.build_pdf(R.CpvReport(
+        "CPV report · test", [("Period", "2025-09-01 to 2026-09-01")], z, table, values.loc[period, names], dates[period],
+        baseline[period], pd.Timestamp("2026-06-04"), units, cfg.spc, ["OOS: 10 of 159."], provenance(cfg),
+    ))
+    assert pdf[:5] == b"%PDF-" and len(pdf) > 30_000

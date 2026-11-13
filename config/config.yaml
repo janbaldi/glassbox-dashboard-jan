@@ -98,6 +98,8 @@ parameter_metadata:
 #     - {label: Shipped, column: Date of Product Shipment}
 #   closed_from: Shipped       # from this stage on a batch has left the pipeline
 #   key_cqas: ["FP Flow CAR+ (%)", "FP Post-Thaw Viability (%)"]
+#   baseline: {start: 2025-01-01, end: 2025-06-30}   # open on this fixed baseline (default: the rest of the period)
+#   material_sources: ["Raw material / vector"]      # variation sources whose categorical parameters are lots
 #   group_columns: {functional_type: Functional Type, process_day: Process Day, variation_source: Variation Source}
 
 # How to interpret the values in the `remanufacture` column. A batch is

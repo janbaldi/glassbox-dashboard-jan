@@ -40,9 +40,10 @@ Tabs along the top. Only the open tab is calculated, and what it calculates
 is cached, so switching tabs is quick.
 
 **Monitoring tabs** (where are we). They share the sidebar: period, recent
-window (the last 30 to 180 days of the period), sites, re-manufactures.
-Everything compares the recent window with the baseline (the rest of the
-period), live, and the period ends at the data's last date.
+window (the last 30 to 180 days of the period), baseline, sites,
+re-manufactures. Everything compares the recent window with the baseline
+(the rest of the period, or fixed dates), live, and the period ends at the
+data's last date.
 
 | Tab | Shows |
 | --- | --- |
@@ -51,8 +52,9 @@ period), live, and the period ends at the data's last date.
 | Patient | Scorecard and trends of the patient and starting material parameters |
 | Process | The same per process day, filtered by functional type and variation source; quantities measured on several days as one profile |
 | Final product | OOS per month and by type, small trends of the key quality attributes, scorecard and trends of every final product parameter |
+| Materials | For one parameter: every raw material and vector lot against the lot before it, and the lot changes at which the value moved |
 | Sites | OOS rate, volume and lead times per site; every parameter tested for a site difference |
-| CPV | Heat map of every parameter's monthly mean against its baseline control limits; control charts (EWMA, CUSUM) |
+| CPV | Heat map of every parameter's monthly mean against its baseline control limits; control charts (EWMA, CUSUM); the view as a PDF report with methods and provenance (`cart_dashboard/cpv_report.py`) |
 
 The **scorecard** has one row per numerical parameter: recent and baseline
 median, the shift in baseline SD, a Mann-Whitney q-value (Benjamini-Hochberg

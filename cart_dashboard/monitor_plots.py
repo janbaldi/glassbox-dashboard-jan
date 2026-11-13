@@ -224,3 +224,33 @@ def category_share_figure(dates: pd.Series, text: pd.Series, most: int = 8) -> g
     fig.update_layout(barmode="stack", bargap=0.2)
     fig.update_yaxes(tickformat=".0%", range=[0, 1])
     return _layout(fig, "Share of the batches per month", 300, legend=True)
+
+
+def lot_figure(dates: pd.Series, y: pd.Series, lots: pd.Series, changes: pd.DataFrame, label: str, alpha: float = 0.05) -> go.Figure:
+    """A parameter by material lot: the batches, each lot's median over the time it was in use, and the lot changes at which the value moved."""
+    text = lots.astype("string").str.strip()
+    ok = y.notna() & dates.notna()
+    d = pd.to_datetime(dates)
+    fig = go.Figure()
+    fig.add_scatter(x=d[ok], y=y[ok], mode="markers", marker=dict(size=5, color=POINT_COLOR, opacity=0.6), name="Batches",
+                    customdata=text[ok].fillna("(no lot)"), hovertemplate="%{x|%Y-%m-%d}: %{y}<br>lot %{customdata}<extra></extra>")
+    first = True
+    for lot, at in (ok & text.notna()).groupby(text).groups.items():
+        rows = [i for i in at if ok[i]]
+        if len(rows) < 3:
+            continue
+        med = float(y[rows].median())
+        fig.add_scatter(
+            x=[d[rows].min(), d[rows].max()], y=[med, med], mode="lines", line=dict(width=3, color=SPC_COLOR),
+            name="Lot median, over the time the lot was in use", legendgroup="lots", showlegend=first,
+            hovertemplate=f"lot {lot}: median {med:.4g} · {len(rows)} batches<extra></extra>",
+        )
+        first = False
+    moved = changes[changes["q"] < alpha] if len(changes) else changes
+    for i, r in enumerate(moved.itertuples()):
+        fig.add_vline(x=r.date, line=dict(color=TREND_COLOR, width=1.2, dash="dash"))
+        fig.add_annotation(x=r.date, y=1, yref="paper", xanchor="left", yanchor="top", xshift=3, yshift=-11 * (i % 3),
+                           text=str(r.after), showarrow=False, font=dict(size=10, color=TREND_COLOR))
+    fig.update_yaxes(title=dict(text=label, font=dict(size=12)))
+    fig.update_xaxes(title=dict(text="Manufacturing date", font=dict(size=12)))
+    return _layout(fig, "", 420, legend=True)

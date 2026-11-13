@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
-from datetime import date, timedelta
+
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from .loading import load
 PERIODS = {"Last 6 months": 183, "Last 12 months": 365, "Last 24 months": 730, "All data": None, "Custom": 0}
 RECENT = [30, 60, 90, 180]
 REMAN = ["Include", "Exclude", "Only"]
+BASELINES = ["Rest of the period", "Fixed dates"]
 PLOT_CONFIG = {"displayModeBar": False}
 STATUS_TEXT = {M.STATUS_WATCH: "◆ Watch", M.STATUS_STABLE: "Stable", M.STATUS_FEW: "Too few batches"}
 
@@ -44,8 +45,11 @@ class Ctx:
     start: pd.Timestamp
     end: pd.Timestamp
     recent_start: pd.Timestamp
+    baseline_start: pd.Timestamp
+    baseline_end: pd.Timestamp
+    fixed_baseline: bool
     rows: pd.Series  # the site and re-manufacture filters
-    period: pd.Series  # rows within [start, end]
+    period: pd.Series  # rows within [start, end], and the baseline when it lies outside
     recent: pd.Series
     baseline: pd.Series
     score: pd.DataFrame  # monitor.scorecard over every numerical parameter
@@ -69,7 +73,12 @@ class Ctx:
 
     def windows_text(self) -> str:
         return (f"Recent: {int(self.recent.sum()):,} batches started {self.recent_start:%Y-%m-%d} to {self.end:%Y-%m-%d} · "
-                f"baseline: {int(self.baseline.sum()):,} batches from {self.start:%Y-%m-%d}")
+                f"baseline: {int(self.baseline.sum()):,} batches {self.baseline_text()}")
+
+    def baseline_text(self) -> str:
+        if self.fixed_baseline:
+            return f"{self.baseline_start:%Y-%m-%d} to {self.baseline_end:%Y-%m-%d} (fixed)"
+        return f"from {self.baseline_start:%Y-%m-%d}"
 
 
 @st.cache_data(show_spinner="Reading the parameter values…")
@@ -83,8 +92,8 @@ def _as_of(key: tuple, _df: pd.DataFrame, _s: M.Settings, _cfg: DashboardConfig)
 
 
 @st.cache_data(show_spinner="Comparing the recent window with the baseline…")
-def _score(key: tuple, filters: tuple, _values, _dates, _recent, _baseline, _spc, _directions) -> pd.DataFrame:
-    return M.scorecard(_values, _dates, _recent, _baseline, _spc, _directions)
+def _score(key: tuple, filters: tuple, _values, _dates, _recent, _baseline, _spc, _directions, _period) -> pd.DataFrame:
+    return M.scorecard(_values, _dates, _recent, _baseline, _spc, _directions, _period)
 
 
 @st.cache_data(show_spinner="Fitting trend…")
@@ -138,8 +147,25 @@ def context(title: str, caption: str = "") -> Ctx:
                 start = as_of - pd.Timedelta(days=364)
         recent_days = st.selectbox(
             "Recent window", RECENT, format_func=lambda d: f"Last {d} days", key="mon_recent",
-            help="The newest part of the period. Everything is compared with the baseline: the rest of the period, before it.",
+            help="The newest part of the period. Everything is compared with the baseline.",
         )
+        recent_start = pd.Timestamp(end).normalize() + pd.Timedelta(days=1 - recent_days)
+        ss.setdefault("mon_baseline", BASELINES[1] if s.baseline else BASELINES[0])
+        fixed = None
+        how = st.selectbox(
+            "Baseline", BASELINES, key="mon_baseline",
+            help="What the recent window is compared with, and where control limits come from. The rest of the period "
+                 "moves along with the data; fixed dates keep one period you trust as the reference.",
+        )
+        if how == BASELINES[1]:
+            kept = ss.get("mon_baseline_dates")
+            if not (isinstance(kept, (list, tuple)) and len(kept) == 2):
+                default = s.baseline or (pd.Timestamp(start), recent_start - pd.Timedelta(days=1))
+                lo = min(max(default[0], first), as_of)
+                ss["mon_baseline_dates"] = (lo.date(), max(lo, min(default[1], as_of)).date())
+            picked = st.date_input("Baseline dates", key="mon_baseline_dates", min_value=first.date(), max_value=as_of.date())
+            if isinstance(picked, (list, tuple)) and len(picked) == 2:
+                fixed = (pd.Timestamp(picked[0]), pd.Timestamp(picked[1]))
         group("Batches")
         sites: list[str] = []
         if cfg.has("site"):
@@ -155,14 +181,17 @@ def context(title: str, caption: str = "") -> Ctx:
         rows &= df[cfg.col("site")].astype("string").isin(sites)
     if reman != "Include":
         rows &= df[REMANUFACTURED] == (reman == "Only")
-    recent, baseline = M.windows(dates, start, end, recent_days)
+    recent, baseline = M.windows(dates, start, end, recent_days, fixed)
     recent, baseline = recent & rows, baseline & rows
-    recent_start = pd.Timestamp(end).normalize() + pd.Timedelta(days=1 - recent_days)
-    filters = (str(pd.Timestamp(start).date()), str(pd.Timestamp(end).date()), recent_days, tuple(sites), reman)
+    inside = (dates >= pd.Timestamp(start)) & (dates < pd.Timestamp(end).normalize() + pd.Timedelta(days=1))
+    period = (inside & rows) | baseline
+    filters = (str(pd.Timestamp(start).date()), str(pd.Timestamp(end).date()), recent_days, tuple(sites), reman,
+               tuple(str(x.date()) for x in fixed) if fixed else None)
     directions = dict(zip(available["name"], available["direction"])) if "direction" in available else None
-    score = _score(key, filters, values, dates, recent, baseline, cfg.spc, directions)
+    score = _score(key, filters, values, dates, recent, baseline, cfg.spc, directions, period)
+    b_start, b_end = fixed if fixed else (pd.Timestamp(start), recent_start - pd.Timedelta(days=1))
     ctx = Ctx(cfg, df, available, s, values, units, key, as_of, pd.Timestamp(start), pd.Timestamp(end), recent_start,
-              rows, recent | baseline, recent, baseline, score, filters)
+              b_start, b_end, fixed is not None, rows, period, recent, baseline, score, filters)
 
     with st.sidebar:
         st.divider()
@@ -268,14 +297,13 @@ def investigate(ctx: Ctx, parameter: str | None = None, batch: str | None = None
     if parameter is not None:
         select_parameter(parameter, ctx.params, ctx.cfg)
     sites = sorted(ctx.df[ctx.cfg.col("site")].dropna().astype(str).unique()) if ctx.cfg.has("site") else None
-    day = timedelta(days=1)
     if batch is not None:
         ss["interest_mode"], ss["interest_single"] = SelectionMode.SINGLE, batch
         ss["background_dates"] = ((ctx.as_of - pd.Timedelta(days=365)).date(), ctx.as_of.date())
     else:
         ss["interest_mode"] = SelectionMode.TIME_FRAME
         ss["interest_dates"] = (ctx.recent_start.date(), ctx.end.date())
-        ss["background_dates"] = (ctx.start.date(), max(ctx.start.date(), ctx.recent_start.date() - day))
+        ss["background_dates"] = (ctx.baseline_start.date(), max(ctx.baseline_start.date(), ctx.baseline_end.date()))
     ss["background_mode"] = SelectionMode.TIME_FRAME
     for prefix in ("interest", "background"):
         ss[f"{prefix}_reman"] = RemanufactureFilter.ALL

@@ -6,7 +6,10 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from .. import cpv_report as R
 from .. import monitor as M
+from .. import stats as S
+from ..report import provenance
 from ..monitor_plots import z_heatmap
 from . import common as C
 from .groups import _product_mask
@@ -85,6 +88,7 @@ def render() -> None:
         "Shift (SD)": score["shift"].to_numpy(),
         "Status": [C.status_text(a, b) if isinstance(a, str) else "" for a, b in zip(score["status"], score["shift"])],
     })
+    _download(ctx, choice, z.loc[order], table, score)
     C.heading("Control charts", "Click a row for the parameter's chart. EWMA and CUSUM are switched on for it.")
     remembered = st.session_state.get("mon_pick_cpv")
     default = order.index(remembered) if remembered in order else 0
@@ -106,3 +110,38 @@ def render() -> None:
     st.session_state.setdefault("mon_ewma_cpv", True)
     st.session_state.setdefault("mon_cusum_cpv", True)
     C.parameter_detail(ctx, name, "cpv")
+
+
+def _download(ctx: C.Ctx, choice: str, z: pd.DataFrame, table: pd.DataFrame, score: pd.DataFrame) -> None:
+    """The report button: the PDF is built when it is clicked."""
+    s = ctx.s
+    sites, reman = ctx.filters[3], ctx.filters[4]
+    scope = [
+        ("Parameter set", f"{choice} ({len(table)} parameters charted)"),
+        ("Period", f"manufacturing start {ctx.start:%Y-%m-%d} to {ctx.end:%Y-%m-%d}; data as of {ctx.as_of:%Y-%m-%d}"),
+        ("Recent window", f"{ctx.recent_start:%Y-%m-%d} to {ctx.end:%Y-%m-%d} ({int(ctx.recent.sum()):,} batches)"),
+        ("Baseline", f"{ctx.baseline_text()} ({int(ctx.baseline.sum()):,} batches)"),
+        ("Batches", f"sites: {', '.join(sites) or 'all'}; re-manufactured: {reman.lower()}"),
+    ]
+    oos = []
+    if s.oos_flag:
+        f = M.flag(ctx.df[s.oos_flag], s.truthy)
+        r, b = f[ctx.recent].dropna().astype(bool), f[ctx.baseline].dropna().astype(bool)
+        if len(r) and len(b):
+            oos.append(f"OOS: {S.wilson(int(r.sum()), len(r)).text()} in the recent window; "
+                       f"{S.wilson(int(b.sum()), len(b)).text()} in the baseline. Batches without a result yet are left out.")
+    report_table = table.assign(status=[a if isinstance(a, str) else "" for a in score["status"]]).drop(columns="Status")
+    names = [n for n in table["Parameter"] if n in ctx.values]
+
+    def build() -> bytes:
+        return R.build_pdf(R.CpvReport(
+            f"CPV report · {choice} · {ctx.end:%B %Y}", scope, z, report_table,
+            ctx.values.loc[ctx.period, names], ctx.dates[ctx.period], ctx.baseline[ctx.period], ctx.recent_start,
+            ctx.units, ctx.cfg.spc, oos, provenance(ctx.cfg, selection=dict(scope)),
+        ))
+
+    row = st.container(horizontal=True, vertical_alignment="center", gap="small")
+    row.caption("This view as a report for the file, with methods and provenance:")
+    slug = "".join(ch if ch.isalnum() else "_" for ch in choice).strip("_").lower()
+    row.download_button("CPV report (PDF)", build, file_name=f"cpv_report_{slug}_{ctx.end:%Y_%m}.pdf",
+                        mime="application/pdf", icon=":material/picture_as_pdf:", on_click="ignore", key="mon_inv_cpv_pdf")

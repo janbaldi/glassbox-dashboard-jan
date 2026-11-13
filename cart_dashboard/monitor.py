@@ -77,6 +77,8 @@ class Settings:
     process_day: str | None = None
     variation_source: str | None = None
     key_cqas: list[str] = field(default_factory=list)
+    baseline: tuple[pd.Timestamp, pd.Timestamp] | None = None  # a fixed baseline period, when the config sets one
+    material_sources: tuple[str, ...] = ("Raw material / vector",)  # variation sources whose categories are lots
 
 
 def settings(cfg: DashboardConfig, df: pd.DataFrame, params: pd.DataFrame) -> Settings:
@@ -106,6 +108,11 @@ def settings(cfg: DashboardConfig, df: pd.DataFrame, params: pd.DataFrame) -> Se
     closed = raw.get("closed_from", "Shipped")
     s.closed_from = closed if closed in labels else (labels[-1] if labels else None)
     s.key_cqas = [c for c in raw.get("key_cqas") or DEFAULT_KEY_CQAS if c in df.columns]
+    fixed = raw.get("baseline") or {}
+    if fixed.get("start") and fixed.get("end"):
+        s.baseline = (pd.Timestamp(str(fixed["start"])), pd.Timestamp(str(fixed["end"])))
+    if raw.get("material_sources"):
+        s.material_sources = tuple(str(x) for x in raw["material_sources"])
     return s
 
 
@@ -150,13 +157,21 @@ def numeric_frame(df: pd.DataFrame, params: pd.DataFrame, cfg: DashboardConfig) 
     return pd.DataFrame(columns, index=df.index), units
 
 
-def windows(dates: pd.Series, start, end, recent_days: int) -> tuple[pd.Series, pd.Series]:
-    """(recent, baseline) masks: the last ``recent_days`` of [start, end], and the days of the period before them."""
+def windows(dates: pd.Series, start, end, recent_days: int, fixed: tuple | None = None) -> tuple[pd.Series, pd.Series]:
+    """(recent, baseline) masks: the last ``recent_days`` of [start, end], and the days of the period before them.
+
+    With ``fixed`` (start, end; inclusive) the baseline is that date range
+    instead, wherever it lies, less any day of the recent window.
+    """
     d = pd.to_datetime(dates)
     end = pd.Timestamp(end).normalize() + pd.Timedelta(days=1)
     inside = (d >= pd.Timestamp(start)) & (d < end)
     cut = end - pd.Timedelta(days=recent_days)
-    return inside & (d >= cut), inside & (d < cut)
+    recent = inside & (d >= cut)
+    if fixed is None:
+        return recent, inside & (d < cut)
+    in_fixed = (d >= pd.Timestamp(fixed[0])) & (d < pd.Timestamp(fixed[1]).normalize() + pd.Timedelta(days=1))
+    return recent, in_fixed & ~recent
 
 
 def robust_sd(x: np.ndarray) -> float:
@@ -180,7 +195,7 @@ def longest_run(side: np.ndarray) -> int:
 
 def scorecard(
     values: pd.DataFrame, dates: pd.Series, recent: pd.Series, baseline: pd.Series, spc: dict | None = None,
-    directions: dict[str, str] | None = None,
+    directions: dict[str, str] | None = None, period: pd.Series | None = None,
 ) -> pd.DataFrame:
     """One row per parameter: the recent window against the baseline.
 
@@ -190,14 +205,15 @@ def scorecard(
     - ``ewma``: recent batches where the EWMA (normal from the baseline) is outside its limits;
       ``ewma_now``: whether it is outside at the latest batch
     - ``run``: the longest recent run on one side of the baseline median
-    - ``trend``: the monthly medians over both windows, for a sparkline
+    - ``trend``: the monthly medians over ``period`` (default: both windows), for a sparkline;
+      the EWMA runs over the same batches
     - ``status``: Shifted (q < ALPHA and |shift| >= SHIFT_SD), Watch (weaker
       evidence: q < ALPHA with a smaller shift, the EWMA outside its limits at
       the latest batch, or more batches outside than chance explains), Stable,
       or Too few batches (< MIN_BATCHES in a window)
     """
     d = pd.to_datetime(dates)
-    both = (recent | baseline) & d.notna()
+    both = (recent | baseline if period is None else period | recent | baseline) & d.notna()
     month = d[both].dt.to_period("M")
     months = pd.period_range(month.min(), month.max(), freq="M") if both.any() else []
     rows = []
@@ -510,3 +526,74 @@ def family_profile(values: pd.DataFrame, family: dict[int, str], recent: pd.Seri
         rows.append(dict(day=day, parameter=name, baseline=b.median(), q1=b.quantile(0.25), q3=b.quantile(0.75),
                          recent=r.median(), n_baseline=len(b), n_recent=len(r)))
     return pd.DataFrame(rows)
+
+
+# --------------------------------------------------------------------------- material lots
+
+
+def lot_table(lots: pd.Series, dates: pd.Series, rows: pd.Series) -> pd.DataFrame:
+    """Per lot used in ``rows``: first and last use, the median date of use and the number of batches, in order of use."""
+    text = lots.astype("string").str.strip()
+    ok = rows & text.notna() & (text != "") & dates.notna()
+    d = pd.to_datetime(dates[ok])
+    g = d.groupby(text[ok])
+    out = pd.DataFrame({"first": g.min(), "last": g.max(), "middle": g.median(), "n": g.size()})
+    return out.sort_values(["middle", "first"], kind="stable").rename_axis("lot").reset_index()
+
+
+def lot_changes(values: pd.Series, lots: pd.Series, dates: pd.Series, rows: pd.Series) -> pd.DataFrame:
+    """Each lot against the lot used before it: did the value move at the change?
+
+    Lots are ordered by their median date of use; lots with fewer than
+    MIN_BATCHES values are skipped, so a lot is compared with the nearest
+    earlier lot that has enough. ``shift``: the difference of the two lot
+    medians in within-lot robust SD (pooled over all lots); ``p``: Mann-Whitney.
+    """
+    text = lots.astype("string").str.strip()
+    table = lot_table(lots, dates, rows)
+    ok = rows & values.notna()
+    groups = {lot: values[ok & (text == lot)].to_numpy(float) for lot in table["lot"]}
+    kept = table[[len(groups[lot]) >= S.MIN_BATCHES for lot in table["lot"]]].reset_index(drop=True)
+    columns = ["before", "after", "date", "n_before", "n_after", "median_before", "median_after", "shift", "p"]
+    if len(kept) < 2:
+        return pd.DataFrame(columns=columns)
+    sd = robust_sd(np.concatenate([groups[lot] - np.median(groups[lot]) for lot in kept["lot"]]))
+    out = []
+    for a, b in zip(kept.itertuples(), kept.iloc[1:].itertuples()):
+        x, y = groups[a.lot], groups[b.lot]
+        p = float(sps.mannwhitneyu(y, x, alternative="two-sided").pvalue) if np.ptp(np.concatenate([x, y])) > 0 else 1.0
+        mx, my = float(np.median(x)), float(np.median(y))
+        out.append([a.lot, b.lot, b.first, len(x), len(y), mx, my, (my - mx) / sd if np.isfinite(sd) else np.nan, p])
+    return pd.DataFrame(out, columns=columns)
+
+
+def material_screen(values: pd.Series, materials: pd.DataFrame, dates: pd.Series, rows: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """For one parameter: every material's lot changes, and a summary per material.
+
+    Returns (summary, changes). ``changes`` is lot_changes for every column of
+    ``materials`` with a ``material`` column and ``q``: Benjamini-Hochberg over
+    all lot changes of all materials. ``summary`` per material: lots used,
+    changes tested, how many moved the value (q < ALPHA), the largest shift
+    among those (else among all) and the smallest q; most moved first.
+    """
+    parts, summary = [], []
+    for material in materials.columns:
+        changes = lot_changes(values, materials[material], dates, rows)
+        used = lot_table(materials[material], dates, rows)
+        parts.append(changes.assign(material=material))
+        summary.append(dict(material=material, lots=len(used), tested=len(changes)))
+    changes = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    summary = pd.DataFrame(summary)
+    if changes.empty or summary.empty:
+        return summary.assign(moved=0, shift=np.nan, q=np.nan), changes.assign(q=[])
+    changes["q"] = S.benjamini_hochberg(changes["p"])
+    rows_out = []
+    for material, part in changes.groupby("material", sort=False):
+        moved = part[part["q"] < ALPHA]
+        pool = moved if len(moved) else part
+        rows_out.append(dict(material=material, moved=len(moved), q=part["q"].min(),
+                             shift=pool["shift"].loc[pool["shift"].abs().idxmax()] if pool["shift"].notna().any() else np.nan))
+    summary = summary.merge(pd.DataFrame(rows_out), on="material", how="left").fillna({"moved": 0})
+    summary["moved"] = summary["moved"].astype(int)
+    return summary.assign(_a=summary["shift"].abs().fillna(0)).sort_values(
+        ["moved", "_a"], ascending=[False, False], kind="stable").drop(columns="_a").reset_index(drop=True), changes
