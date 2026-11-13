@@ -1,0 +1,42 @@
+report:
+  title: Demo OOS investigation
+  description: >-
+    Synthetic sample batches with an out-of-spec label planted on vector hold
+    time, Prodigy step yield and thaw duration. For trying the dashboard's
+    Open glassbox run.
+
+pipeline:
+  cv_strategy: stratified_kfold
+  n_splits: 3
+  random_state: 42
+  tuning_n_trials: 4
+  calibration: sigmoid
+
+investigation:
+  batches: all_oos
+  max_detail: 10
+  preselect: 1
+
+ebm:
+  learning_rate: [0.01, 0.05]
+  max_bins: [256]
+  max_interaction_bins: [16]
+  interactions: [0, 3]
+  min_samples_leaf: [2]
+  max_leaves: [2, 3]
+
+xgboost:
+  learning_rate: [0.05, 0.1]
+  max_depth: [2]
+  n_estimators: [200, 400]
+  subsample: [0.7, 1]
+  colsample_bytree: [0.7, 1]
+
+pygam:
+  lam: [0.1, 1.0, 10.0]
+  n_splines: [10]
+
+decision_tree:
+  max_depth: [3, 5]
+  min_samples_leaf: [5, 20]
+  ccp_alpha: [0.0, 0.001]

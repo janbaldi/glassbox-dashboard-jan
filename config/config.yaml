@@ -1,0 +1,105 @@
+# CAR-T manufacturing dashboard configuration
+# =========================================
+#
+# This file maps the column names of YOUR dataset onto the parameters the
+# dashboard uses. The dashboard code never refers to raw column names; it only
+# uses the parameter names on the left-hand side below.
+#
+# Tip: keep your real configuration out of version control by copying this file
+# to `config/config.local.yaml` (git-ignored). The app picks up the config in
+# this order:
+#   1. the path in the DASHBOARD_CONFIG environment variable
+#   2. config/config.local.yaml
+#   3. config/config.yaml (this file, pointing at the synthetic sample data)
+
+data:
+  # Path to the CSV file. Relative paths are resolved against the project root.
+  # A .csv.gz file works too.
+  csv_path: "../data/batch_data.csv"
+  # Extra keyword arguments passed to pandas.read_csv (optional).
+  read_csv_options:
+    sep: ","
+    low_memory: false
+  # How to parse the manufacturing date column (optional).
+  #   date_format: strptime format, e.g. "%d/%m/%Y". Leave null to infer: dates
+  #                written in different ways are then all read, and the ones
+  #                that cannot be read are listed under "Warnings and messages".
+  #   dayfirst:    set true for dd/mm/yyyy style dates when inferring.
+  date_format: null
+  dayfirst: false
+
+# One-to-one mapping: dashboard parameter -> column name in the dataset.
+columns:
+  # Required
+  batch_id: "Patient Lot/Batch #"
+  manufacturing_date: Date of Manufacture Start
+  # Optional: remove (or set to null) if your data has no such column; the
+  # corresponding filter is then hidden.
+  site: Manufacturing Site
+  remanufacture: Remanufacture
+
+# One-to-many mapping: dashboard parameter -> list of dataset columns.
+column_groups:
+  apheresis_dates:
+    - Date of Apheresis Collection
+    - Date Apheresis Shipped to MFG
+
+# Parameter metadata: one row per parameter the dashboard can show. The names
+# in `name_column` must match column names in the data; parameters missing
+# from the data are left out of the dropdowns.
+#
+# `type_column` decides how a parameter is plotted:
+#   numeric, ratio             numbers on the y-axis ("a:b" ratios become a / b)
+#   duration                   minutes on the y-axis
+#   datetime                   days from manufacturing start ("hh:mm" clock
+#                              times: hour of day)
+#   categorical                one row per category
+#   [a,b,c]                    ordered categories, in the listed order
+#   anything else              numeric if the values are numbers, else categorical
+parameter_metadata:
+  csv_path: config/parameters.csv
+  read_csv_options:
+    sep: ";"
+    encoding: utf-8-sig
+  name_column: Parameter
+  type_column: Value Type
+  # Free text searched along with the name in the parameter search (optional).
+  description_column: Description
+  # Metadata columns offered as filters on the parameter list (optional).
+  filter_columns:
+    - Functional Type
+    - Process Day
+    - Actionable?
+  # Specification and alert limits, drawn on the plot (optional; leave a cell
+  # empty when a parameter has no such limit). `direction` says which side
+  # matters: low, high or both (the default); EWMA and CUSUM then only signal
+  # on that side.
+  limit_columns:
+    lower_spec: Lower spec
+    upper_spec: Upper spec
+    lower_alert: Lower alert
+    upper_alert: Upper alert
+    direction: Direction of concern
+
+# How to interpret the values in the `remanufacture` column. A batch is
+# considered re-manufactured when its value (compared case-insensitively as
+# text) is in this list; everything else counts as "not re-manufactured".
+remanufacture:
+  true_values: ["Y", "Yes", "True", "1"]
+
+# Trend fit shown for numerical parameters in "Batches over time": straight
+# line segments that may jump (shift) or change slope at a breakpoint.
+trend:
+  max_breaks: 10         # fits with 0..max_breaks breakpoints are compared
+  min_segment_size: 15   # fewest batches in one segment
+  bic_margin: 2          # the fewest breakpoints with BIC within this of the lowest BIC wins
+  outlier_iqr: 3         # points beyond Q1 - k*IQR or Q3 + k*IQR are left out of the fit
+
+# EWMA and CUSUM charts in "Batches over time". Target and sigma come from the
+# reference batches (mean, and average moving range / 1.128): the background
+# batches of the reference period picked in the sidebar.
+spc:
+  lam: 0.2   # EWMA weight of the newest batch
+  L: 3       # EWMA control limits at +/- L sigma
+  k: 0.5     # CUSUM slack, in sigma
+  h: 5       # CUSUM decision interval, in sigma

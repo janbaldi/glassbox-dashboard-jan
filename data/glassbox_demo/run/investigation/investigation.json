@@ -1,0 +1,63 @@
+{
+  "schema": "glassbox/investigation/1",
+  "id_col": "Patient Lot/Batch #",
+  "target_col": "car_oos_y_n_is_y",
+  "group_col": null,
+  "positive_label": 1,
+  "n_oos": 184,
+  "n_detailed": 10,
+  "models": [
+    {
+      "model_name": "decision_tree",
+      "pr_auc": 0.2805510202215599,
+      "pr_auc_ci": "\u2014",
+      "roc_auc": 0.7787031938325992,
+      "roc_auc_ci": "\u2014",
+      "n_features": 30,
+      "calibrated": true,
+      "contribution_scale": "probability"
+    },
+    {
+      "model_name": "ebm",
+      "pr_auc": 0.4901581559217708,
+      "pr_auc_ci": "\u2014",
+      "roc_auc": 0.8759038019536488,
+      "roc_auc_ci": "\u2014",
+      "n_features": 30,
+      "calibrated": true,
+      "contribution_scale": "log-odds"
+    },
+    {
+      "model_name": "gam",
+      "pr_auc": 0.5178035370327989,
+      "pr_auc_ci": "\u2014",
+      "roc_auc": 0.8674224286535146,
+      "roc_auc_ci": "\u2014",
+      "n_features": 30,
+      "calibrated": true,
+      "contribution_scale": "log-odds"
+    },
+    {
+      "model_name": "xgboost",
+      "pr_auc": 0.46922113247304176,
+      "pr_auc_ci": "\u2014",
+      "roc_auc": 0.8663839542233289,
+      "roc_auc_ci": "\u2014",
+      "n_features": 30,
+      "calibrated": true,
+      "contribution_scale": "log-odds"
+    }
+  ],
+  "trust": {
+    "prevalence": 0.092,
+    "baseline_pr_auc": 0.092,
+    "usable": true
+  },
+  "caveat": "In-sample contributions come from the final model, refit on every row including the batch. Leave-one-out contributions come from the same tuned model refit without that batch's row; feature selection, tuning and imputation still saw it, so the holdout is partial.",
+  "files": {
+    "batches": "batches.csv",
+    "drivers": "drivers.csv",
+    "what_if": "what_if.csv",
+    "peers": "peers.csv"
+  }
+}

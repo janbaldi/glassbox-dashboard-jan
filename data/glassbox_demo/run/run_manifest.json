@@ -1,0 +1,543 @@
+{
+  "schema": "glassbox/run-manifest/1",
+  "report": "experiment_report.html",
+  "run": {
+    "timestamp": "2026-09-28 15:52:19",
+    "data_path": "../data/glassbox_demo/dataset.csv",
+    "target": "car_oos_y_n_is_y",
+    "id_col": "Patient Lot/Batch #",
+    "config_path": "../data/glassbox_demo/config_demo.yaml",
+    "task": "classification",
+    "output_dir": "../data/glassbox_demo/run",
+    "impute_strategy": "median",
+    "models": [
+      "decision_tree",
+      "ebm",
+      "gam",
+      "xgboost"
+    ],
+    "forward_eval": 0,
+    "forward_tol": 0.01,
+    "forward_removal": 0,
+    "reuse_params": false,
+    "cv_group_col": null,
+    "drop_group_from_features": false,
+    "cv_strategy": "stratified_kfold",
+    "mode": "train",
+    "run_date": "2026-09-28T15:52:19",
+    "git_commit": "5c90c4c6d898a5ef66bfa0e7d839dc7988f5514e-dirty",
+    "data_sha256": "f4e2975bec8edafc218967b98d766e9a5e5d3d345af7a784f13754b577161e0a",
+    "seed": 42,
+    "environment": {
+      "python": "3.12.3",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "pandas": "3.0.6",
+      "numpy": "2.5.3",
+      "scikit-learn": "1.9.1",
+      "xgboost": "3.4.1",
+      "interpret": "0.7.8",
+      "pygam": "0.12.0",
+      "shap": "0.52.0",
+      "plotly": "7.1.0",
+      "pydantic": "2.13.5"
+    },
+    "n_folds": 3,
+    "classes": [
+      0,
+      1
+    ],
+    "positive_label": 1,
+    "investigation": "investigation/investigation.json"
+  },
+  "config": {
+    "pipeline": {
+      "cv_strategy": "stratified_kfold",
+      "n_splits": 3,
+      "max_folds": 20,
+      "random_state": 42,
+      "class_weight": "balanced",
+      "n_jobs": -1,
+      "search_cv_strategy": "auto",
+      "search_n_splits": 5,
+      "tuning_n_trials": 4,
+      "forward_n_trials": null,
+      "forward_patience": null,
+      "forward_max_correlation": null,
+      "calibration": "sigmoid",
+      "calibration_cross_fit": 5,
+      "bootstrap_ci": 0,
+      "outer_cv": "none",
+      "outer_n_splits": 5,
+      "selection_stability": 0,
+      "drift_check": true,
+      "contribution_export": false,
+      "contribution_min_selected_pct": 80.0
+    },
+    "decision": {
+      "thresholds": "auto",
+      "cost_false_negative": 1.0,
+      "cost_false_positive": 1.0,
+      "target_sensitivity": null,
+      "production_prevalence": null
+    },
+    "audit": {
+      "write_manifest": true,
+      "capture_environment": true,
+      "require_clean_git": false
+    },
+    "report": {
+      "title": "Demo OOS investigation",
+      "description": "Synthetic sample batches with an out-of-spec label planted on vector hold time, Prodigy step yield and thaw duration. For trying the dashboard's Open glassbox run."
+    },
+    "investigation": {
+      "batches": "all_oos",
+      "max_detail": 10,
+      "preselect": 1
+    },
+    "ebm": {
+      "learning_rate": [
+        0.01,
+        0.05
+      ],
+      "max_bins": [
+        256
+      ],
+      "max_interaction_bins": [
+        16
+      ],
+      "interactions": [
+        0,
+        3
+      ],
+      "min_samples_leaf": [
+        2
+      ],
+      "max_leaves": [
+        2,
+        3
+      ]
+    },
+    "xgboost": {
+      "learning_rate": [
+        0.05,
+        0.1
+      ],
+      "max_depth": [
+        2
+      ],
+      "n_estimators": [
+        200,
+        400
+      ],
+      "subsample": [
+        0.7,
+        1
+      ],
+      "colsample_bytree": [
+        0.7,
+        1
+      ]
+    },
+    "pygam": {
+      "lam": [
+        0.1,
+        1.0,
+        10.0
+      ],
+      "n_splines": [
+        10
+      ]
+    },
+    "decision_tree": {
+      "max_depth": [
+        3,
+        5
+      ],
+      "min_samples_leaf": [
+        5,
+        20
+      ],
+      "ccp_alpha": [
+        0.0,
+        0.001
+      ]
+    }
+  },
+  "models": [
+    {
+      "model_name": "decision_tree",
+      "n_features": 30,
+      "features": [
+        "Vector hold time (min)",
+        "Prodigy Total Viable Cell Step Yield (%)",
+        "Thaw Duration (min)",
+        "Target Number of Vector Vials",
+        "Day 6 Volume IL-2 Added to G-Rex A (mL)",
+        "Harvest Post Wash Viable CAR+ Cell Count Per G-Rex (cells)",
+        "Volume of VSV-g Sampling (mL)",
+        "Number of Bags",
+        "Volume TexMACS Added to Bag A (mL)",
+        "Day 10 Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "Day 10 Flow Cytometry Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "PT Total CD4+ (Viable Cells)",
+        "Mixing_cycles_x_pre_activation_clump_count",
+        "Day 8 Incubator Out CO2 Saturation (%)",
+        "Day 3 Syringe Hold Duration",
+        "Prodigy Total Viable CD3+ Cell Step Yield (%)",
+        "Total Viable Cell Count (TNC) (cells)",
+        "Post Wash POS FLOW CD19+ (%)",
+        "% Recovery Dose (formulation to post thaw)",
+        "Target volume Transact to add to culture bag (mL)",
+        "Day 6 Incubator Out CO2 Saturation (%)",
+        "Day 1 Incubator In Temperature (\u00b0C) dev_from_37.0C",
+        "LV CoA CAR% - Donor 1",
+        "Post Wash POS Viability (%)",
+        "D10 Pre-Wash AO%3",
+        "Provirus Vector Copy Number (copies/transduced cell)",
+        "Post Thaw FLOW CD8+ (%)",
+        "D3-D10 viability change (%)",
+        "LV CoA CAR% - Donor 2",
+        "Number of Prodigy Cycles"
+      ],
+      "n_folds": 3,
+      "cv_strategy": "stratified_kfold",
+      "search_cv_strategy": "stratified_kfold",
+      "metrics": {
+        "accuracy": 0.733,
+        "logloss": 0.26304287516981417,
+        "roc_auc": 0.7787031938325992,
+        "pr_auc": 0.2805510202215599,
+        "brier": 0.07455217880158768,
+        "ece": 0.006551044806128533
+      },
+      "metric_intervals": {},
+      "train_metrics": {
+        "accuracy": 0.7595,
+        "logloss": 0.3961512004477586,
+        "roc_auc": 0.9040757876843517,
+        "pr_auc": 0.39913178492689727,
+        "brier": 0.14086652595999186,
+        "ece": 0.1848656573282251
+      },
+      "best_params": {
+        "min_samples_leaf": "20",
+        "max_depth": "5",
+        "ccp_alpha": "0.001"
+      },
+      "decision_threshold": 0.34,
+      "decision_rule": "minimum expected cost",
+      "contribution_scale": "probability",
+      "artefacts": [
+        {
+          "file": "decision_tree/predictions.csv",
+          "sha256": "59b3f7fa21d613640129798a28abb7641a3c6a7d487e03641fa9930c3a409953",
+          "bytes": 112335
+        },
+        {
+          "file": "decision_tree/local_explanations.csv",
+          "sha256": "d03294312d9922f0b5b156a42086cceadbf9e390837d78de37ae11a6ea7c1e79",
+          "bytes": 1126082
+        },
+        {
+          "file": "decision_tree/model_decision_tree.joblib",
+          "sha256": "3ffff285eccbecbd34c8146621fb9902661b5883bbbb034f2ae132a0b095c000",
+          "bytes": 490699
+        },
+        {
+          "file": "decision_tree/calibrator_decision_tree.joblib",
+          "sha256": "dd7b5e2320c365b042cd3e2005a1024b991038b42a1b7e7bf28f953f671abbba",
+          "bytes": 929
+        }
+      ]
+    },
+    {
+      "model_name": "ebm",
+      "n_features": 30,
+      "features": [
+        "Vector hold time (min)",
+        "Prodigy Total Viable Cell Step Yield (%)",
+        "Thaw Duration (min)",
+        "Target Number of Vector Vials",
+        "Day 6 Volume IL-2 Added to G-Rex A (mL)",
+        "Harvest Post Wash Viable CAR+ Cell Count Per G-Rex (cells)",
+        "Volume of VSV-g Sampling (mL)",
+        "Number of Bags",
+        "Volume TexMACS Added to Bag A (mL)",
+        "Day 10 Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "Day 10 Flow Cytometry Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "PT Total CD4+ (Viable Cells)",
+        "Mixing_cycles_x_pre_activation_clump_count",
+        "Day 8 Incubator Out CO2 Saturation (%)",
+        "Day 3 Syringe Hold Duration",
+        "Prodigy Total Viable CD3+ Cell Step Yield (%)",
+        "Total Viable Cell Count (TNC) (cells)",
+        "Post Wash POS FLOW CD19+ (%)",
+        "% Recovery Dose (formulation to post thaw)",
+        "Target volume Transact to add to culture bag (mL)",
+        "Day 6 Incubator Out CO2 Saturation (%)",
+        "Day 1 Incubator In Temperature (\u00b0C) dev_from_37.0C",
+        "LV CoA CAR% - Donor 1",
+        "Post Wash POS Viability (%)",
+        "D10 Pre-Wash AO%3",
+        "Provirus Vector Copy Number (copies/transduced cell)",
+        "Post Thaw FLOW CD8+ (%)",
+        "D3-D10 viability change (%)",
+        "LV CoA CAR% - Donor 2",
+        "Number of Prodigy Cycles"
+      ],
+      "n_folds": 3,
+      "cv_strategy": "stratified_kfold",
+      "search_cv_strategy": "stratified_kfold",
+      "metrics": {
+        "accuracy": 0.829,
+        "logloss": 0.21570863788710914,
+        "roc_auc": 0.8759038019536488,
+        "pr_auc": 0.4901581559217708,
+        "brier": 0.06251535617518172,
+        "ece": 0.008351240332109428
+      },
+      "metric_intervals": {},
+      "train_metrics": {
+        "accuracy": 0.8535,
+        "logloss": 0.3464090869634573,
+        "roc_auc": 0.9431053677456425,
+        "pr_auc": 0.6835855082731981,
+        "brier": 0.10763475751766646,
+        "ece": 0.20172325951189493
+      },
+      "best_params": {
+        "min_samples_leaf": "2",
+        "max_leaves": "2",
+        "max_interaction_bins": "16",
+        "max_bins": "256",
+        "learning_rate": "0.01",
+        "interactions": "0"
+      },
+      "decision_threshold": 0.51,
+      "decision_rule": "minimum expected cost",
+      "contribution_scale": "log-odds",
+      "artefacts": [
+        {
+          "file": "ebm/predictions.csv",
+          "sha256": "d517ef17ab94991e0d5c9486f9e5c46b9b5edc5c9749861271fc0c8e47c78e37",
+          "bytes": 112506
+        },
+        {
+          "file": "ebm/local_explanations.csv",
+          "sha256": "ded8d657edcc3b413661eb0f24d506bd41b4c8dd0314f0e51ecc767842e0a106",
+          "bytes": 1646304
+        },
+        {
+          "file": "ebm/model_ebm.joblib",
+          "sha256": "cec778cb5510b0537380f912713ae916caf2e116c2beb8d997dd70b08be00d63",
+          "bytes": 1524059
+        },
+        {
+          "file": "ebm/calibrator_ebm.joblib",
+          "sha256": "1f12993dc7afc1b068cff75caf7321f4aac075fd613ef5d3578abd00b21a6632",
+          "bytes": 929
+        }
+      ]
+    },
+    {
+      "model_name": "gam",
+      "n_features": 30,
+      "features": [
+        "Vector hold time (min)",
+        "Prodigy Total Viable Cell Step Yield (%)",
+        "Thaw Duration (min)",
+        "Target Number of Vector Vials",
+        "Day 6 Volume IL-2 Added to G-Rex A (mL)",
+        "Harvest Post Wash Viable CAR+ Cell Count Per G-Rex (cells)",
+        "Volume of VSV-g Sampling (mL)",
+        "Number of Bags",
+        "Volume TexMACS Added to Bag A (mL)",
+        "Day 10 Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "Day 10 Flow Cytometry Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "PT Total CD4+ (Viable Cells)",
+        "Mixing_cycles_x_pre_activation_clump_count",
+        "Day 8 Incubator Out CO2 Saturation (%)",
+        "Day 3 Syringe Hold Duration",
+        "Prodigy Total Viable CD3+ Cell Step Yield (%)",
+        "Total Viable Cell Count (TNC) (cells)",
+        "Post Wash POS FLOW CD19+ (%)",
+        "% Recovery Dose (formulation to post thaw)",
+        "Target volume Transact to add to culture bag (mL)",
+        "Day 6 Incubator Out CO2 Saturation (%)",
+        "Day 1 Incubator In Temperature (\u00b0C) dev_from_37.0C",
+        "LV CoA CAR% - Donor 1",
+        "Post Wash POS Viability (%)",
+        "D10 Pre-Wash AO%3",
+        "Provirus Vector Copy Number (copies/transduced cell)",
+        "Post Thaw FLOW CD8+ (%)",
+        "D3-D10 viability change (%)",
+        "LV CoA CAR% - Donor 2",
+        "Number of Prodigy Cycles"
+      ],
+      "n_folds": 3,
+      "cv_strategy": "stratified_kfold",
+      "search_cv_strategy": "stratified_kfold",
+      "metrics": {
+        "accuracy": 0.8315,
+        "logloss": 0.21824054706031196,
+        "roc_auc": 0.8674224286535146,
+        "pr_auc": 0.5178035370327989,
+        "brier": 0.06187343870177946,
+        "ece": 0.01125686288296984
+      },
+      "metric_intervals": {},
+      "train_metrics": {
+        "accuracy": 0.842,
+        "logloss": 0.356347091642693,
+        "roc_auc": 0.9265795585136948,
+        "pr_auc": 0.6193634849960654,
+        "brier": 0.1128537092389116,
+        "ece": 0.18412866301178635
+      },
+      "best_params": {
+        "n_splines": "10",
+        "lam": "10.0"
+      },
+      "decision_threshold": 0.48,
+      "decision_rule": "minimum expected cost",
+      "contribution_scale": "log-odds",
+      "artefacts": [
+        {
+          "file": "gam/predictions.csv",
+          "sha256": "daf25183884bd0c4133fcad7b55ac8a617ce25a7634bca3b2a79f3d01ea7e95e",
+          "bytes": 112474
+        },
+        {
+          "file": "gam/local_explanations.csv",
+          "sha256": "02303c3d698d6fe608d12de49413fed55d0cd7ff8deca35ab0c394f10ec70130",
+          "bytes": 1623369
+        },
+        {
+          "file": "gam/model_gam.joblib",
+          "sha256": "217342079af2e6043882b793a23a73502d32f46ab9c30bf17e626b72a458984a",
+          "bytes": 1227643
+        },
+        {
+          "file": "gam/calibrator_gam.joblib",
+          "sha256": "3b48ef41060aa2c1f55589ab59824182815c01ead3975dde43e59c9b134155ca",
+          "bytes": 929
+        }
+      ]
+    },
+    {
+      "model_name": "xgboost",
+      "n_features": 30,
+      "features": [
+        "Vector hold time (min)",
+        "Prodigy Total Viable Cell Step Yield (%)",
+        "Thaw Duration (min)",
+        "Target Number of Vector Vials",
+        "Day 6 Volume IL-2 Added to G-Rex A (mL)",
+        "Harvest Post Wash Viable CAR+ Cell Count Per G-Rex (cells)",
+        "Volume of VSV-g Sampling (mL)",
+        "Number of Bags",
+        "Volume TexMACS Added to Bag A (mL)",
+        "Day 10 Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "Day 10 Flow Cytometry Incubator Out CO2 Saturation (%) dev_from_5.0pct",
+        "PT Total CD4+ (Viable Cells)",
+        "Mixing_cycles_x_pre_activation_clump_count",
+        "Day 8 Incubator Out CO2 Saturation (%)",
+        "Day 3 Syringe Hold Duration",
+        "Prodigy Total Viable CD3+ Cell Step Yield (%)",
+        "Total Viable Cell Count (TNC) (cells)",
+        "Post Wash POS FLOW CD19+ (%)",
+        "% Recovery Dose (formulation to post thaw)",
+        "Target volume Transact to add to culture bag (mL)",
+        "Day 6 Incubator Out CO2 Saturation (%)",
+        "Day 1 Incubator In Temperature (\u00b0C) dev_from_37.0C",
+        "LV CoA CAR% - Donor 1",
+        "Post Wash POS Viability (%)",
+        "D10 Pre-Wash AO%3",
+        "Provirus Vector Copy Number (copies/transduced cell)",
+        "Post Thaw FLOW CD8+ (%)",
+        "D3-D10 viability change (%)",
+        "LV CoA CAR% - Donor 2",
+        "Number of Prodigy Cycles"
+      ],
+      "n_folds": 3,
+      "cv_strategy": "stratified_kfold",
+      "search_cv_strategy": "stratified_kfold",
+      "metrics": {
+        "accuracy": 0.856,
+        "logloss": 0.22155646405199486,
+        "roc_auc": 0.8663839542233289,
+        "pr_auc": 0.46922113247304176,
+        "brier": 0.06378658914693829,
+        "ece": 0.010858212067912794
+      },
+      "metric_intervals": {},
+      "train_metrics": {
+        "accuracy": 0.88,
+        "logloss": 0.30528753995895386,
+        "roc_auc": 0.9654340643554874,
+        "pr_auc": 0.775956268984987,
+        "brier": 0.09211020916700363,
+        "ece": 0.18512966594169847
+      },
+      "best_params": {
+        "subsample": "1",
+        "n_estimators": "200",
+        "max_depth": "2",
+        "learning_rate": "0.05",
+        "colsample_bytree": "0.7"
+      },
+      "decision_threshold": 0.54,
+      "decision_rule": "minimum expected cost",
+      "contribution_scale": "log-odds",
+      "artefacts": [
+        {
+          "file": "xgboost/predictions.csv",
+          "sha256": "2f02c3392f3138b6c6cda3ba90d723c3af965f79ed5c6bdddce7df8779efe493",
+          "bytes": 112430
+        },
+        {
+          "file": "xgboost/local_explanations.csv",
+          "sha256": "4ac8eabbdd466431c75826a084e807c07d0b0e1b579bd20cff6b2dd3206c00a8",
+          "bytes": 1660783
+        },
+        {
+          "file": "xgboost/model_xgboost.joblib",
+          "sha256": "e53b00653259337c0a59133264f7f57886d5c59b3e25b1229c3e4f7159bfb1a8",
+          "bytes": 676363
+        },
+        {
+          "file": "xgboost/calibrator_xgboost.joblib",
+          "sha256": "5ef056de82b71c0997626052e6ffed7988a770dcf5240413d53e7776da82ebe7",
+          "bytes": 929
+        }
+      ]
+    }
+  ],
+  "investigation": [
+    {
+      "file": "investigation/investigation.json",
+      "sha256": "ffa4f1dab6c540aa0163fc2677e8d9e3e7dc6902032ae50ec7f9944d2868993f",
+      "bytes": 1777
+    },
+    {
+      "file": "investigation/batches.csv",
+      "sha256": "e5c84a94a8126d16a0f3807dfde702709ce775245ad61e5cd791c92e2bfd18e9",
+      "bytes": 75135
+    },
+    {
+      "file": "investigation/drivers.csv",
+      "sha256": "6fb7e4768c5cfa13080bc460d0b8ce530696399f9dd8a7daae9a66ee5b2de7c2",
+      "bytes": 196255
+    },
+    {
+      "file": "investigation/what_if.csv",
+      "sha256": "e8aa33124835313c2371da504e1e356344bf568cb981866dd05280dc2948ea65",
+      "bytes": 62497
+    },
+    {
+      "file": "investigation/peers.csv",
+      "sha256": "3d40a2b62eb9912c2cc20894c9b8f57b7040b9154dbf1daed0279c27eb569d24",
+      "bytes": 23232
+    }
+  ]
+}
