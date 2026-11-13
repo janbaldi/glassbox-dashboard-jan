@@ -16,14 +16,13 @@ from ..plots import (
     CATEGORY_COLORS,
     MAX_LEGEND_CATEGORIES,
     SET_COLUMN,
-    Limit,
     color_groups,
     combine_sets,
     fold_categories,
     plot_values,
     timeline_scatter,
 )
-from ..search import highlight, search_parameters
+from ..search import highlight
 from ..spc import control_charts, episodes
 from ..transform import TRANSFORMS, apply_transform, percent_scale, suggest_transform
 from ..trend import MODELS, TrendFit, fit_trend
@@ -58,10 +57,7 @@ def short_text(text: str, query: str = "", limit: int = 120, title: str | None =
 
 
 def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | None:
-    """Search and filter the parameter list, then pick one."""
-    query = st.text_input(
-        "Search parameters", placeholder="Words in the name or description", key="timeline_param_search"
-    )
+    """Filter the parameter list by metadata, then pick one (the list itself is searchable)."""
     filters = cfg.parameters_filter_columns
     keep = pd.Series(True, index=available.index)
     if filters:
@@ -74,14 +70,14 @@ def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | No
                 )
                 if picked:
                     keep &= values.isin(picked)
-    matching = search_parameters(available[keep], query)
+    matching = available[keep]
 
     if matching.empty:
-        st.info("No parameters match." + (" Try fewer or shorter words." if query.strip() else ""))
+        st.info("No parameters match the metadata filters.")
         return None
     types = dict(zip(matching["name"], matching["type"]))
     if st.session_state.get("timeline_parameter") not in types:
-        st.session_state["timeline_parameter"] = next(iter(types))  # the best match
+        st.session_state["timeline_parameter"] = next(iter(types))
     parameter = st.selectbox(
         f"Parameter ({len(types)} of {len(available)})",
         list(types),
@@ -90,7 +86,7 @@ def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | No
     )
     description = matching.set_index("name")["description"].get(parameter, "")
     if description:
-        short_text(description, query)
+        short_text(description)
     return parameter
 
 
@@ -169,29 +165,6 @@ def _with_contributions(table: pd.DataFrame, cfg: DashboardConfig, model: ModelR
         table[IN_SAMPLE] = ids.map(c["in_sample"]).astype(float)
         table[LOO] = ids.map(pd.to_numeric(c["loo"], errors="coerce")).astype(float)
     return table
-
-
-LIMIT_LINES = (
-    ("lower_spec", "Lower spec", "spec"), ("upper_spec", "Upper spec", "spec"),
-    ("lower_alert", "Lower alert", "alert"), ("upper_alert", "Upper alert", "alert"),
-)
-
-
-def _limits(row: pd.Series, y: pd.Series, raw: pd.Series | None, transform: str, label: str) -> list[Limit]:
-    """The parameter's specification and alert limits, on the plotted scale (transformed with the values)."""
-    out = []
-    for key, name, kind in LIMIT_LINES:
-        value = row.get(key)
-        if value is None or pd.isna(value):
-            continue
-        plotted = float(value)
-        if raw is not None:  # the values are transformed: transform the limit the same way
-            both = apply_transform(pd.concat([raw, pd.Series([float(value)])], ignore_index=True), transform, label)
-            plotted = both.values.iloc[-1]
-            if pd.isna(plotted):
-                continue
-        out.append(Limit(name, float(plotted), f"{float(value):g}", kind))
-    return out
 
 
 def _signal_summary(charts, ewma: bool, cusum: bool, most: int = 3) -> None:
@@ -349,8 +322,7 @@ def render(
     normal = data[SET_COLUMN] == BACKGROUND_LABEL  # the control charts' normal batches
     trend = _fit(data[date_col], y, cfg.trend) if opts["trend"] and numeric else None
 
-    limits_row = available.set_index("name").loc[parameter]
-    direction = str(limits_row.get("direction", "both") or "both")
+    direction = str(available.set_index("name").loc[parameter].get("direction", "both") or "both")
     charts = None
     if (opts["ewma"] or opts["cusum"]) and numeric:
         reference = normal
@@ -359,7 +331,6 @@ def render(
             reference = normal & (data[date_col] >= start) & (data[date_col] < end + pd.Timedelta(days=1))
         charts = control_charts(data[date_col], y, reference=reference, direction=direction, **cfg.spc)
 
-    limits = _limits(limits_row, y, raw, opts["transform"], label) if numeric else []
     table = context_table(data, cfg, y, trend, raw, charts)
     if model is not None:
         table = _with_contributions(table, cfg, model, parameter)
@@ -392,7 +363,6 @@ def render(
     elif (opts["ewma"] or opts["cusum"]) and numeric:
         notes.append("too few batches for EWMA/CUSUM")
 
-
     # The batch picked in the table (below the plot) is highlighted in the plot.
     highlight = picked if picked_row is not None else None
 
@@ -409,7 +379,7 @@ def render(
     fig = timeline_scatter(
         data, cfg, y, label, order, trend, color, color_order, color_by or "", highlight, raw, ticks,
         ewma=charts if opts["ewma"] else None, cusum=charts if opts["cusum"] else None,
-        limits=limits, reference=shade,
+        reference=shade,
     )
     st.plotly_chart(fig, width="stretch", theme="streamlit")
     if notes:

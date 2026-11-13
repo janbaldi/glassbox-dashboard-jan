@@ -70,15 +70,9 @@ parameter_metadata:
     - Functional Type
     - Process Day
     - Actionable?
-  # Specification and alert limits, drawn on the plot (optional; leave a cell
-  # empty when a parameter has no such limit). `direction` says which side
-  # matters: low, high or both (the default); EWMA and CUSUM then only signal
-  # on that side.
+  # `direction` says which side of a parameter matters: low, high or both
+  # (the default); EWMA and CUSUM then only signal on that side.
   limit_columns:
-    lower_spec: Lower spec
-    upper_spec: Upper spec
-    lower_alert: Lower alert
-    upper_alert: Upper alert
     direction: Direction of concern
 
 # How to interpret the values in the `remanufacture` column. A batch is

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -28,17 +27,8 @@ NO_VALUE_COLOR = "#d3d2cc"
 INTEREST_COLOR = "#0047ab"
 TREND_COLOR = "#eb6834"
 SPC_COLOR = "#2c3e50"
-SPEC_COLOR = "#0b2a5b"  # specification limits: navy, solid
-ALERT_COLOR = "#d18b00"  # alert limits: amber, dashed
 REFERENCE_FILL = "rgba(42, 120, 214, 0.07)"  # the reference period
 
-
-@dataclass
-class Limit:
-    label: str  # "Lower spec"
-    value: float  # on the plotted (possibly transformed) scale
-    shown: str  # the value as entered, for the label
-    kind: str  # "spec" or "alert"
 
 CATEGORY_COLORS = ["#7a8b00", "#35a02c", "#e5b400", "#12a4b6", "#6a3fb5", "#8c6239"]
 MAX_LEGEND_CATEGORIES = 12
@@ -186,7 +176,6 @@ def timeline_scatter(
     ticks: tuple[list[float], list[str]] | None = None,
     ewma: ControlCharts | None = None,
     cusum: ControlCharts | None = None,
-    limits: list[Limit] | None = None,
     reference: tuple[pd.Timestamp, pd.Timestamp] | None = None,
 ) -> go.Figure:
     """Scatter of ``y`` (aligned with ``data``) against manufacturing date.
@@ -202,8 +191,8 @@ def timeline_scatter(
     hover text and ``ticks`` (values, labels) label the y-axis in original units.
     ``ewma`` adds the EWMA with its control limits on the same axes, ``cusum``
     a CUSUM panel below with a shared date axis.
-    ``limits`` draws specification and alert lines, and ``reference`` shades
-    the reference period.
+    ``reference`` shades the reference period. A range slider under the
+    date axis zooms to a time period.
     """
     batch_col = cfg.col("batch_id")
     date_col = cfg.col("manufacturing_date")
@@ -263,8 +252,6 @@ def timeline_scatter(
 
     if trend is not None:
         _add_trend(fig, data, y, trend, date_col)
-    if limits:
-        _add_limits(fig, data.loc[shown, date_col], limits)
     if reference is not None:
         fig.add_vrect(
             x0=reference[0], x1=reference[1], fillcolor=REFERENCE_FILL, line_width=0, layer="below", row=1, col=1,
@@ -299,9 +286,12 @@ def timeline_scatter(
         height = max(height, 24 * len(category_order) + 160)
     fig.update_yaxes(title_text=y_label, row=1, col=1)
     fig.update_xaxes(title_text="Manufacturing date", row=len(panels), col=1)
+    # Time-period zoom: drag the handles of the slider under the plot.
+    fig.update_xaxes(rangeslider=dict(visible=True, thickness=0.08), row=len(panels), col=1)
+    height += 60
     fig.update_layout(
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        margin=dict(l=10, r=10, t=90 if ewma or cusum or limits else 35, b=10),  # room for a two-line legend
+        margin=dict(l=10, r=10, t=90 if ewma or cusum else 35, b=10),  # room for a two-line legend
         hovermode="closest",
         font=dict(size=11),
         height=height,
@@ -337,7 +327,7 @@ def _add_trend(fig: go.Figure, data: pd.DataFrame, y: pd.Series, trend: TrendFit
                 x=out[date_col],
                 y=y[trend.outlier],
                 mode="markers",
-                marker=dict(symbol="x-thin", size=11, line=dict(width=2, color=TREND_COLOR)),
+                marker=dict(symbol="x-thin", size=5.5, line=dict(width=1.5, color=TREND_COLOR)),
                 name=f"Outlier, not in fit (n={len(out)})",
                 hoverinfo="skip",
             )
@@ -348,32 +338,6 @@ def _add_trend(fig: go.Figure, data: pd.DataFrame, y: pd.Series, trend: TrendFit
         fig.add_annotation(
             x=bp, y=1, yref="paper", xanchor="left", yanchor="top", xshift=3,
             text=f"{bp:%Y-%m-%d}", showarrow=False, font=dict(size=11),
-        )
-
-
-def _add_limits(fig: go.Figure, dates: pd.Series, limits: list[Limit]) -> None:
-    """Horizontal specification and alert lines across the plotted dates, labelled at the right."""
-    if dates.empty:
-        return
-    x0, x1 = dates.min(), dates.max()
-    shown = set()
-    for lim in limits:
-        spec = lim.kind == "spec"
-        name = "Specification limit" if spec else "Alert limit"
-        fig.add_trace(
-            go.Scatter(
-                x=[x0, x1], y=[lim.value, lim.value], mode="lines", name=name, legendgroup=name,
-                showlegend=name not in shown,
-                line=dict(color=SPEC_COLOR if spec else ALERT_COLOR, width=1.5 if spec else 1.2, dash=None if spec else "dash"),
-                hovertemplate=f"{lim.label}: {lim.shown}<extra></extra>",
-            ),
-            row=1, col=1,
-        )
-        shown.add(name)
-        fig.add_annotation(  # spec labels at the right end, alert labels at the left, so close limits stay readable
-            x=x1 if spec else x0, y=lim.value, xanchor="right" if spec else "left", yanchor="bottom",
-            text=f"{lim.label} {lim.shown}", showarrow=False,
-            font=dict(size=10, color=SPEC_COLOR if spec else ALERT_COLOR), row=1, col=1,
         )
 
 

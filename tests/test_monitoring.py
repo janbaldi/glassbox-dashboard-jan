@@ -11,7 +11,7 @@ import yaml
 
 from cart_dashboard.config import ConfigError, load_config
 from cart_dashboard.data import load_batches, load_parameters
-from cart_dashboard.plots import BACKGROUND_LABEL, INTEREST_LABEL, SET_COLUMN, Limit, timeline_scatter
+from cart_dashboard.plots import BACKGROUND_LABEL, INTEREST_LABEL, SET_COLUMN, timeline_scatter
 from cart_dashboard.spc import control_charts, episodes
 from cart_dashboard.trend import fit_trend
 
@@ -108,11 +108,11 @@ def test_plot_with_every_overlay(setup):
     charts = control_charts(data["DT"], y, reference=normal, direction="low")
     fig = timeline_scatter(
         data, cfg, y, "CAR", trend=trend, ewma=charts, cusum=charts,
-        limits=[Limit("Lower spec", 45, "45", "spec"), Limit("Lower alert", 50, "50", "alert")],
         reference=(pd.Timestamp("2024-06-01"), pd.Timestamp("2025-01-01")),
     )
     names = {t.name for t in fig.data}
-    assert {"Specification limit", "Alert limit"} <= names
+    assert not any("limit" in n.lower() and "EWMA" not in n for n in names if n)  # no spec/alert lines
+    assert fig.layout.xaxis2.rangeslider.visible  # time-period zoom under the bottom panel
     assert fig.layout.yaxis2.title.text == "CUSUM (σ), h=5"  # rows: plot, CUSUM
 
 

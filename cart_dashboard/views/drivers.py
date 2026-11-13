@@ -15,7 +15,6 @@ from ..config import DashboardConfig
 from ..evidence import model_summary
 from ..glassbox import GlassboxRun, ModelRun, batch_drivers, driver_summary, refitted_among
 from ..plots import batch_drivers_figure, drivers_figure
-from ..search import search_parameters
 from . import messages
 from .timeline import PICKED_KEY, _group, short_text
 
@@ -35,16 +34,13 @@ PLOT_REQUEST_KEY = "run_plot_request"  # a feature to plot on the next run, set 
 def select_parameter(feature: str | None, available: pd.DataFrame, cfg: DashboardConfig) -> None:
     """Make ``feature`` the plotted parameter.
 
-    Must run before the parameter widget is drawn. Search text and metadata
-    filters that would hide the parameter are cleared, or the parameter list
-    would fall back to its best match.
+    Must run before the parameter widget is drawn. Metadata filters that
+    would hide the parameter are cleared, or the parameter list would fall
+    back to its first entry.
     """
     if feature not in set(available["name"]):
         st.session_state[MESSAGE_KEY] = f"`{feature}` is not a parameter in the dashboard data."
         return
-    query = st.session_state.get("timeline_param_search") or ""
-    if query.strip() and feature not in set(search_parameters(available, query)["name"]):
-        st.session_state["timeline_param_search"] = ""
     row = available.set_index("name").loc[feature]
     for column in cfg.parameters_filter_columns:
         key = f"timeline_filter_{column}"

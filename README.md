@@ -52,14 +52,13 @@ One page. The sidebar holds the plot controls; the page shows the data.
   Sunday) and the background is the past year's batches (from the same day
   one year ago up to today).
 - **Title**: the plotted parameter as on the y-axis (name, unit, transform).
-- **Plot**, with notes under it; with a glassbox run open, the contribution
+- **Plot**, with a time-period slider under it to zoom in on a period, and notes under it; with a glassbox run open, the contribution
   charts; then the **context table**, folded.
 - **Warnings and messages** (bottom, folded): warnings about the batches
   of interest, batches of a glassbox run missing from the data, duplicated ids.
 - **Sidebar**:
-  - *Parameter*: *Search parameters* keeps the parameters whose name or
-    description (`description_column` in the config) contains every word
-    typed, name matches first. *Filter by metadata* narrows the list by the
+  - *Parameter*: the parameter list can be searched by typing in it.
+    *Filter by metadata* narrows the list by the
     metadata columns in `filter_columns` (Functional Type, Process Day and
     Actionable? in the sample config). The chosen parameter's description is
     shown under the list, shortened; hovering it shows the full text.
@@ -111,12 +110,12 @@ The dashboard never imports glassbox; it only reads its files
 builds an ML dataset from the sample data and prints the glassbox command to
 run on it; then open `data/glassbox_demo/run`.
 
-### Limits
+### Direction of concern
 
-The plot draws the specification and alert limits from `parameters.csv`
-(columns set in `parameter_metadata.limit_columns`). The limits in the sample
-`parameters.csv` are demonstration values for the synthetic data (column
-*Limit source*); replace them with your product specification.
+`parameter_metadata.limit_columns.direction` names the `parameters.csv`
+column that says which side of a parameter matters (low, high or both); EWMA
+and CUSUM then only signal on that side. A range slider under the plot
+zooms to a time period.
 
 ### Statistics
 

@@ -19,8 +19,8 @@ jump to one.
 
 1. Check the **selection bar** at the top. By default it compares this
    week's batches with the batches of the past year.
-2. Type a few words of the parameter's name in **Search parameters** in the
-   sidebar and pick the parameter from **Parameter**.
+2. Pick the parameter from **Parameter** in the sidebar. Type a few
+   letters of its name in the list to find it.
 3. Read the plot: grey points are all batches, dark blue rings are the batches of
    interest. The **Batches of interest** table at the bottom (folded; click
    its title to open it) gives each batch of interest's percentile and
@@ -123,16 +123,10 @@ from the pick list.
 
 ## Choosing the parameter
 
-### Search parameters
+### Finding a parameter
 
-Type words in **Search parameters** to shorten the parameter list. A
-parameter matches when every word you typed appears in its name or its
-description, in any order and in upper or lower case. Parameters whose name
-matches come first. For example `viable yield` finds
-*Prodigy Total Viable Cell Step Yield (%)*.
-
-Clear the field to see all parameters again. If the parameter you had picked
-no longer matches, the best match is picked instead.
+Click **Parameter** and type: the list keeps the parameters whose name
+matches what you typed.
 
 ### Filter by metadata
 
@@ -219,10 +213,6 @@ dates the charts take "normal" from. All dates by default.
 
 What the plot adds to watch a parameter over time:
 
-- **Specification and alert limits**: a solid navy line for a
-  specification limit (the official pass/fail line) and a dashed amber line
-  for an alert limit (the internal early warning), labelled with their
-  values, when they are entered for the parameter. See *Limits*.
 - **EWMA and CUSUM measure normal from the background**: target and spread
   come from the background batches of the **reference period**; every batch,
   the batches of interest included, is judged against them. So the shifts you
@@ -242,17 +232,11 @@ What the plot adds to watch a parameter over time:
 To look at one site, pick it under **Manufacturing site**: the trend and the
 reference batches are then that site's.
 
-### Limits
+### Direction of concern
 
-Specification and alert limits are columns of the parameter metadata file
-(`parameters.csv`): *Lower spec*, *Upper spec*, *Lower alert*, *Upper alert*
-and *Direction of concern* (`low`, `high` or `both`; empty means both). Fill
-them only for the parameters that have limits; empty cells are not drawn. On
-a log or logit scale the limits are transformed with the values.
-
-The limits in the sample `parameters.csv` are demonstration values for the
-synthetic sample data (column *Limit source*). Replace them with the limits
-of your product specification.
+The column *Direction of concern* of the parameter metadata file
+(`parameters.csv`) says which side of a parameter matters: `low`, `high` or
+`both` (empty means both). EWMA and CUSUM then only signal on that side.
 
 ## Colouring points
 
@@ -307,8 +291,6 @@ categories of the batches of interest.
 - **Orange dashed vertical lines**: trend breakpoints, labelled with their
   date.
 - **Orange crosses**: outliers left out of the trend fit.
-- **Solid navy / dashed amber horizontal lines**: specification and alert
-  limits, labelled with their values.
 - **Light blue shading**: the reference period of EWMA and CUSUM, when it is
   shorter than the plotted period.
 - **Dark line with dotted lines**: the EWMA and its control limits.
@@ -319,6 +301,9 @@ categories of the batches of interest.
 
 - Hover over a point for its batch id, manufacturing date, value, site and
   colour category.
+- Drag the handles of the **time-period slider** under the plot to zoom
+  to a period; drag the shaded window to move it along. The slider shows
+  the whole date range.
 - Drag over an area to zoom in; double-click to zoom out again.
 - Click a legend entry to hide or show it; double-click one to show only that
   entry.
@@ -914,9 +899,9 @@ data or metadata files are picked up the next time the page updates.
   re-manufactured, such as Y or Yes.
 - `parameter_metadata`: the metadata CSV with one row per parameter, and
   which of its columns hold the name (`name_column`), value type
-  (`type_column`), description (`description_column`, searched by
-  **Search parameters**), the metadata filters (`filter_columns`) and the
-  limit columns (`limit_columns`, see *Limits*).
+  (`type_column`), description (`description_column`), the metadata
+  filters (`filter_columns`) and the direction of concern
+  (`limit_columns.direction`, see *Direction of concern*).
 - `trend`: the trend fit settings (see *Trend fit*).
 - `spc`: the EWMA and CUSUM settings: `lam`, `L`, `k` and `h` (see *EWMA
   chart* and *CUSUM chart*), and `baseline`, the number of first batches
@@ -955,7 +940,7 @@ unchanged.
 
 ### The parameter I want is not in the list
 
-Clear **Search parameters** and the metadata filters. A parameter only
+Clear the metadata filters. A parameter only
 appears when it is in the metadata file and has a column in the data.
 
 ### The statistics say "Too few batches"
