@@ -120,7 +120,7 @@ def test_app_monitors_with_control_charts():
     """Every chart on: the control charts take normal from the background, and no OOS wording is left."""
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(Path(__file__).parent.parent / "app.py"), default_timeout=180)
+    at = AppTest.from_file(str(Path(__file__).parent / "apps" / "investigation.py"), default_timeout=180)
     at.session_state["timeline_parameter"] = "FP Flow CAR+ (%)"
     at.session_state["timeline_ewma"] = True
     at.session_state["timeline_cusum"] = True

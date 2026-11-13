@@ -47,6 +47,10 @@ class DashboardConfig:
     parameters_description_column: str | None = None
     parameters_filter_columns: list[str] = field(default_factory=list)
     parameters_limit_columns: dict[str, str] = field(default_factory=dict)  # lower_spec, ..., direction
+    catalog_path: Path | None = None  # the parameter catalogue (Excel or CSV), merged into the metadata
+    catalog_name_column: str = "Parameter"
+    catalog_read_options: dict[str, Any] = field(default_factory=dict)
+    monitor: dict[str, Any] = field(default_factory=dict)  # settings of the monitoring pages (see monitor.settings)
     trend: dict[str, float] = field(default_factory=dict)  # keyword arguments for trend.fit_trend
     spc: dict[str, float] = field(default_factory=dict)  # keyword arguments for spc.control_charts
 
@@ -133,6 +137,13 @@ def load_config(path: str | Path | None = None) -> DashboardConfig:
     if unknown:
         raise ConfigError(f"parameter_metadata.limit_columns: unknown key(s) {unknown} in {path}; use {list(LIMIT_KEYS)}")
 
+    catalog = meta.get("catalog") or {}
+    if isinstance(catalog, str):
+        catalog = {"path": catalog}
+    monitor = raw.get("monitor") or {}
+    if not isinstance(monitor, dict):
+        raise ConfigError(f"'monitor' must be a mapping in {path}")
+
     reman = raw.get("remanufacture") or {}
     true_values = [str(v) for v in reman.get("true_values", ["Y", "Yes", "True", "1"])]
 
@@ -152,6 +163,10 @@ def load_config(path: str | Path | None = None) -> DashboardConfig:
         parameters_description_column=str(meta["description_column"]) if meta.get("description_column") else None,
         parameters_filter_columns=[str(c) for c in meta.get("filter_columns") or []],
         parameters_limit_columns=limit_columns,
+        catalog_path=_resolve_path(str(catalog["path"])) if catalog.get("path") else None,
+        catalog_name_column=str(catalog.get("name_column", "Parameter")),
+        catalog_read_options=dict(catalog.get("read_options") or {}),
+        monitor=dict(monitor),
         trend=dict(raw.get("trend") or {}),
         spc=dict(raw.get("spc") or {}),
     )

@@ -36,7 +36,38 @@ variable, then `config/config.local.yaml`, then `config/config.yaml`.
 
 ## Layout
 
-One page. The sidebar holds the plot controls; the page shows the data.
+Tabs along the top. Only the open tab is calculated, and what it calculates
+is cached, so switching tabs is quick.
+
+**Monitoring tabs** (where are we). They share the sidebar: period, recent
+window (the last 30 to 180 days of the period), sites, re-manufactures.
+Everything compares the recent window with the baseline (the rest of the
+period), live, and the period ends at the data's last date.
+
+| Tab | Shows |
+| --- | --- |
+| Overview | Batches started and in process, OOS rate against the baseline, parameters shifted, lead time; volume per site, OOS p-chart, OOS by type, pipeline by stage, what moved |
+| Pipeline | Batches in process by stage, the unusual values of each, batches that stand out; lead times between the dated stages |
+| Patient | Scorecard and trends of the patient and starting material parameters |
+| Process | The same per process day, filtered by functional type and variation source; quantities measured on several days as one profile |
+| Final product | OOS per month and by type, small trends of the key quality attributes, scorecard and trends of every final product parameter |
+| Sites | OOS rate, volume and lead times per site; every parameter tested for a site difference |
+| CPV | Heat map of every parameter's monthly mean against its baseline control limits; control charts (EWMA, CUSUM) |
+
+The **scorecard** has one row per numerical parameter: recent and baseline
+median, the shift in baseline SD, a Mann-Whitney q-value (Benjamini-Hochberg
+over all parameters), recent batches beyond ±3 SD, EWMA signals, a sparkline
+and a status (Shifted / Watch / Stable). Clicking a row draws the parameter's
+trend plot with its statistics; *Investigate* opens it in the Investigation
+tab. The calculations are in `cart_dashboard/monitor.py`, checked in
+`tests/test_monitor.py`.
+
+The tabs group the parameters by the catalogue (`catalog.xlsx`: Functional
+Type, Process Day, Variation Source; `parameter_metadata.catalog` in the
+config) and find the OOS and date columns by name. The `monitor` section of
+the config overrides the defaults; see the help page.
+
+**Investigation tab** (why). One page; the sidebar holds the plot controls.
 
 - **Selection bar** (top): how many batches of interest and background
   batches are selected, and how. *Edit selection* opens the batch selection
@@ -68,14 +99,14 @@ One page. The sidebar holds the plot controls; the page shows the data.
   - *Colour*: colour the points by any non-numerical parameter, and keep only
     batches in chosen categories of that column. The trend is fitted again
     on those batches.
-  - *Help* (bottom): opens the help page, which explains every part of the
-    dashboard. It has a table of contents in the sidebar and a search field
-    that keeps the sections containing every word typed, with the words
-    highlighted. The text is in `docs/help.md`; its `##` and `###` headings
-    become the sections. *Back to the dashboard* returns with all settings
-    kept.
 
 If only one of the two sets has batches, the plot shows that set.
+
+**Help tab**: explains every part of the dashboard. It has a table of
+contents in the sidebar and a search field that keeps the sections
+containing every word typed, with the words highlighted. The text is in
+`docs/help.md`; its `##` and `###` headings become the sections. Settings
+are kept when you switch tabs.
 
 ### Glassbox run
 

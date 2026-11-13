@@ -113,6 +113,22 @@ def generate(params: pd.DataFrame, seed: int = 7) -> pd.DataFrame:
     keep_complete = ["Patient Lot/Batch #", "Date of Manufacture Start", "Manufacturing Site", "Remanufacture"]
     others = [c for c in df.columns if c not in keep_complete]
     df[others] = df[others].mask(rng.random((n, len(others))) < 0.02)
+    return _cut(df, params, mfg)
+
+
+# When a value becomes known, in days from manufacturing start, per process day.
+# Release testing takes about a week after harvest; shipment and infusion follow.
+KNOWN_AFTER = {"Apheresis": -14, "Planning": -2, "Context": -2, "Vector CoA": 0, "D0": 0, "D0-D3": 3, "D1": 1,
+               "D3": 3, "D3-D10": 10, "D6": 6, "D6-D8": 8, "D6-D10": 10, "D8": 8, "D8-D10": 10, "D10": 10,
+               "Cryopreservation": 10, "Final Product": 17, "Post-Thaw": 17, "Post-Release": 30}
+
+
+def _cut(df: pd.DataFrame, params: pd.DataFrame, mfg: pd.Series) -> pd.DataFrame:
+    """Blank what was not yet known on END, the day the data was pulled: the latest batches are still in process."""
+    age = (END - mfg).dt.days.to_numpy()
+    for name, day in params[["Parameter", "Process Day"]].itertuples(index=False):
+        if name in df.columns:
+            df[name] = df[name].where(age >= KNOWN_AFTER.get(str(day).strip(), 10))
     return df
 
 

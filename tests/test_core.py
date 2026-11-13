@@ -367,7 +367,7 @@ def test_default_date_ranges():
 def test_app_runs_with_all_overlays():
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(Path(__file__).parent.parent / "app.py"), default_timeout=120)
+    at = AppTest.from_file(str(Path(__file__).parent / "apps" / "investigation.py"), default_timeout=120)
     at.session_state["interest_mode"] = SelectionMode.MANUAL
     at.session_state["interest_manual"] = ["CT26-01999"]
     at.session_state["background_mode"] = SelectionMode.ALL

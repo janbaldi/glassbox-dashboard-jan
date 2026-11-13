@@ -70,10 +70,35 @@ parameter_metadata:
     - Functional Type
     - Process Day
     - Actionable?
+    - Variation Source
+  # The parameter catalogue (optional; Excel or CSV, one row per parameter).
+  # Its columns win over the same columns above, and it may list parameters
+  # the metadata file does not have. The monitoring pages group the
+  # parameters by its Functional Type, Process Day and Variation Source.
+  catalog:
+    path: catalog.xlsx
+    name_column: Parameter
   # `direction` says which side of a parameter matters: low, high or both
   # (the default); EWMA and CUSUM then only signal on that side.
   limit_columns:
     direction: Direction of concern
+
+# The monitoring tabs (all optional; these are the defaults). Columns that
+# are not in the data are skipped, and what needs them is left out.
+# monitor:
+#   recent_days: 90            # the default recent window
+#   pipeline_days: 45          # an unfinished batch older than this is not "in process"
+#   true_values: ["Y", "Yes", "True", "1"]
+#   oos:
+#     flag: "OOS? (Y/N)"       # any OOS
+#     types: [...]             # default: every column ending in "OOS (Y/N)"
+#   stages:                    # in process order; a batch's stage is the last one with data
+#     - {label: Apheresis, column: Date of Apheresis Collection}
+#     - {label: "Day 0 · selection", process_day: D0}
+#     - {label: Shipped, column: Date of Product Shipment}
+#   closed_from: Shipped       # from this stage on a batch has left the pipeline
+#   key_cqas: ["FP Flow CAR+ (%)", "FP Post-Thaw Viability (%)"]
+#   group_columns: {functional_type: Functional Type, process_day: Process Day, variation_source: Variation Source}
 
 # How to interpret the values in the `remanufacture` column. A batch is
 # considered re-manufactured when its value (compared case-insensitively as

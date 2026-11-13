@@ -77,6 +77,36 @@ def load_batches(cfg: DashboardConfig) -> pd.DataFrame:
     return df
 
 
+def _with_catalog(meta: pd.DataFrame, cfg: DashboardConfig) -> pd.DataFrame:
+    """The metadata with the parameter catalogue merged in.
+
+    The catalogue (one row per parameter) wins where both have a column, adds
+    its other columns, and adds the parameters the metadata file does not list
+    (without a value type: read as numbers when their values are numbers).
+    """
+    if cfg.catalog_path is None:
+        return meta
+    if not cfg.catalog_path.exists():
+        raise ConfigError(f"Parameter catalogue not found: {cfg.catalog_path}")
+    excel = cfg.catalog_path.suffix.lower() in (".xlsx", ".xlsm", ".xls")
+    catalog = (pd.read_excel if excel else pd.read_csv)(cfg.catalog_path, **cfg.catalog_read_options)
+    key, name = cfg.catalog_name_column, cfg.parameters_name_column
+    if key not in catalog.columns:
+        raise ConfigError(f"Column '{key}' not found in {cfg.catalog_path.name}")
+    catalog = catalog.dropna(subset=[key]).rename(columns={key: name})
+    catalog[name] = catalog[name].astype(str).str.strip()
+    catalog = catalog.drop_duplicates(name).set_index(name)
+    meta = meta.dropna(subset=[name]).copy()
+    meta[name] = meta[name].astype(str).str.strip()
+    meta = meta.drop_duplicates(name).set_index(name)
+    merged = meta.reindex(meta.index.union(catalog.index, sort=False))
+    for column in catalog.columns:
+        merged[column] = catalog[column].reindex(merged.index).combine_first(
+            merged[column] if column in merged else pd.Series(index=merged.index, dtype=object)
+        )
+    return merged.reset_index()
+
+
 def load_parameters(cfg: DashboardConfig) -> pd.DataFrame:
     """Parameter metadata: ``name``, ``type`` and ``description`` plus the configured filter columns.
 
@@ -89,6 +119,7 @@ def load_parameters(cfg: DashboardConfig) -> pd.DataFrame:
     if not cfg.parameters_path.exists():
         raise ConfigError(f"Parameter metadata file not found: {cfg.parameters_path}")
     meta = pd.read_csv(cfg.parameters_path, **cfg.parameters_read_csv_options)
+    meta = _with_catalog(meta, cfg)
     cols = {cfg.parameters_name_column: "name", cfg.parameters_type_column: "type"}
     if cfg.parameters_description_column:
         cols[cfg.parameters_description_column] = "description"

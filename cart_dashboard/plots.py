@@ -177,6 +177,8 @@ def timeline_scatter(
     ewma: ControlCharts | None = None,
     cusum: ControlCharts | None = None,
     reference: tuple[pd.Timestamp, pd.Timestamp] | None = None,
+    reference_label: str = "reference period",
+    show_interest: bool = True,
 ) -> go.Figure:
     """Scatter of ``y`` (aligned with ``data``) against manufacturing date.
 
@@ -191,8 +193,10 @@ def timeline_scatter(
     hover text and ``ticks`` (values, labels) label the y-axis in original units.
     ``ewma`` adds the EWMA with its control limits on the same axes, ``cusum``
     a CUSUM panel below with a shared date axis.
-    ``reference`` shades the reference period. A range slider under the
-    date axis zooms to a time period.
+    ``reference`` shades the reference period (named ``reference_label``). A
+    range slider under the date axis zooms to a time period.
+    ``show_interest=False`` leaves the batches-of-interest rings out (the
+    monitoring pages have no such set).
     """
     batch_col = cfg.col("batch_id")
     date_col = cfg.col("manufacturing_date")
@@ -239,23 +243,24 @@ def timeline_scatter(
         )
 
     interest = shown & (data[SET_COLUMN] == INTEREST_LABEL)
-    fig.add_trace(
-        go.Scatter(
-            x=data.loc[interest, date_col],
-            y=y[interest],
-            mode="markers",
-            name=f"{INTEREST_LABEL} (n={int(interest.sum())})",
-            marker=dict(symbol="circle-open", size=RING_SIZE, color=INTEREST_COLOR, line=dict(width=RING_WIDTH)),
-            hoverinfo="skip",
+    if show_interest:
+        fig.add_trace(
+            go.Scatter(
+                x=data.loc[interest, date_col],
+                y=y[interest],
+                mode="markers",
+                name=f"{INTEREST_LABEL} (n={int(interest.sum())})",
+                marker=dict(symbol="circle-open", size=RING_SIZE, color=INTEREST_COLOR, line=dict(width=RING_WIDTH)),
+                hoverinfo="skip",
+            )
         )
-    )
 
     if trend is not None:
         _add_trend(fig, data, y, trend, date_col)
     if reference is not None:
         fig.add_vrect(
             x0=reference[0], x1=reference[1], fillcolor=REFERENCE_FILL, line_width=0, layer="below", row=1, col=1,
-            annotation_text="reference period", annotation_position="top left", annotation_font_size=10,
+            annotation_text=reference_label, annotation_position="top left", annotation_font_size=10,
         )
 
     picked = shown & (data[batch_col] == highlight) if highlight else None

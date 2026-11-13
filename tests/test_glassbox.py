@@ -247,7 +247,7 @@ def test_feature_relevance_covers_the_batches_the_plot_shows():
     at_site_a = df[df[cfg.col("site")] == "SITE-A"][cfg.col("batch_id")]
     n_a = int(at_site_a.isin(run.interest_ids).sum())
 
-    at = AppTest.from_file(str(root / "app.py"), default_timeout=120)
+    at = AppTest.from_file(str(root / "tests" / "apps" / "investigation.py"), default_timeout=120)
     at.session_state["run_open"] = run
     at.session_state["interest_mode"] = SelectionMode.RUN_INTEREST
     at.session_state["background_mode"] = SelectionMode.RUN_BACKGROUND
@@ -274,7 +274,7 @@ def test_statistics_section_follows_the_plot():
 
     root = Path(__file__).parent.parent
     run = load_run(read_folder(root / "data" / "glassbox_demo" / "run"), name="demo")
-    at = AppTest.from_file(str(root / "app.py"), default_timeout=180)
+    at = AppTest.from_file(str(root / "tests" / "apps" / "investigation.py"), default_timeout=180)
     at.session_state["run_open"] = run
     at.session_state["interest_mode"] = SelectionMode.RUN_INTEREST
     at.session_state["background_mode"] = SelectionMode.RUN_BACKGROUND
