@@ -1,280 +1,478 @@
 # Help
 
-The dashboard has two halves, as tabs along the top.
+The dashboard follows CAR-T manufacturing from apheresis to infusion. It has
+two halves, as tabs along the top:
 
-The **monitoring tabs** (Overview, Pipeline, Patient, Process, Final product,
-Materials, Sites, CPV) answer *where are we*: they follow the whole manufacturing
-process, from apheresis to infusion, and compare the newest batches with the
-ones before them. Every number on them is calculated live from the data.
+- The **monitoring tabs** answer *where are we?* They compare the newest
+  batches with the ones before them, for every parameter, and are calculated
+  live from the data.
+- The **Investigation tab** answers *why?* It compares batches you choose
+  with a background, one parameter at a time, and can show what a machine
+  learning model (a glassbox run) found.
 
-The **Investigation tab** answers *why*: it compares **batches of interest**
-(for example this week's batches) with **background batches** for one
-parameter at a time, with the trend plot, the statistics and, with a glassbox
-run open, the machine learning model's feature relevance.
+This page explains every part. Search it with the field above, or jump to a
+topic with the contents in the sidebar. The order is: getting started, the
+monitoring tabs, the Investigation tab, the statistics in plain words, the
+charts, configuration, and troubleshooting.
 
-Use the search field above to find a topic, or the contents in the sidebar to
-jump to one.
+## Getting started
 
-## The monitoring tabs
+### The tabs at a glance
 
-### Recent window and baseline
+| Tab | The question it answers |
+| --- | --- |
+| **Overview** | How is manufacturing doing right now, and what changed? |
+| **Pipeline** | Which batches are in process, does anything stand out in them, and how long does each step take? |
+| **Patient** | Did the patients or the starting material change? |
+| **Process** | Did a manufacturing step change, and on which day? |
+| **Final product** | Are the quality attributes and the OOS rate stable? |
+| **Materials** | Did a parameter move when a raw material or vector lot changed? |
+| **Sites** | Do the manufacturing sites differ? |
+| **CPV** | Is each parameter still in control? (continued process verification, with a PDF report) |
+| **Investigation** | Why are these batches different from the others? |
+| **Help** | This page. |
 
-Every monitoring tab works on a **period** of manufacturing start dates and
-splits it in two. The **recent window** is its last 30, 60, 90 or 180 days;
-the **baseline** is the rest of the period, before it. All statistics compare
-the recent window with the baseline, and the line under each page title says
-which batches are in each.
+### A first look
 
-Set them in the sidebar: **Period** (last 6, 12 or 24 months, all data, or
-custom dates), **Recent window**, **Baseline**, **Manufacturing sites** and
-**Re-manufactured batches**. The choices are shared by all monitoring tabs.
+1. Open **Overview**. The tiles give the number of batches started and in
+   process, the OOS rate and how many parameters shifted; **What moved** at
+   the bottom lists the parameters that changed most.
+2. Check the sidebar: **Period**, **Recent window** and **Baseline** decide
+   which batches are compared (see *Recent window and baseline*). The line
+   under the page title says which batches are in each.
+3. Open **Process**, **Patient** or **Final product** and click a row in the
+   scorecard to see that parameter's trend plot.
+4. Click **Investigate** next to a plot to take the parameter to the
+   **Investigation** tab, where you can choose the batches yourself, see the
+   full statistics, and open a glassbox run.
 
-The period ends at the **data's last date** (the latest date recorded, shown
-at the bottom of the sidebar as *Data as of*), not at today: the dashboard
-shows the data as it was pulled.
+### Moving between tabs
 
-A baseline should be a time you trust. When the baseline itself contains a
-shift, the comparison is with the average of before and after it.
+Every setting is kept when you switch tabs: the sidebar choices, the row you
+clicked, the batch selection of the Investigation tab. The monitoring tabs
+share one sidebar; the Investigation tab has its own.
 
-### Fixed baseline
+The **Investigate** buttons on the monitoring tabs open the Investigation tab
+with the selection already made:
 
-**Baseline** in the sidebar chooses what the recent window is compared with:
-
-- **Rest of the period** (the default): everything in the period before the
-  recent window. It moves along as new data comes in.
-- **Fixed dates**: one date range you pick, wherever it lies, for example
-  the months after the last process change. It stays the same from month to
-  month, so the scorecard, the control limits on the CPV tab and the CPV
-  report all keep one reference. Days of the recent window are never part
-  of it.
-
-With a fixed baseline outside the period, the plots show the baseline
-batches and the period, with the gap between them. Set `monitor.baseline`
-(`start`, `end`) in the config to open the dashboard on a fixed baseline.
-
-### The scorecard and its status
-
-The Patient, Process and Final product tabs list their numerical parameters
-in a scorecard, one row per parameter, the most changed first:
-
-- **Recent** and **Baseline**: the two medians.
-- **Shift (SD)**: recent median minus baseline median, in baseline standard
-  deviations (robust: 1.4826 × the median absolute deviation).
-- **q**: the Mann-Whitney p-value of recent against baseline, corrected for
-  testing every parameter at once (Benjamini-Hochberg, over all numerical
-  parameters, so a parameter has the same q on every tab).
-- **Beyond ±3 SD**: recent batches further than 3 baseline SD from the
-  baseline median.
-- **EWMA signals**: recent batches at which the EWMA chart is outside its
-  limits, with normal (target and spread) taken from the baseline.
-- **Trend**: the monthly medians over the period.
-
-The **Status** sums these up, and means the same on every tab:
-
-- **▲ Shifted up / ▼ Shifted down**: the recent median differs from the
-  baseline (q < 0.05) by at least 0.5 SD.
-- **◆ Watch**: weaker evidence: a significant but smaller difference, the
-  EWMA outside its limits at the latest batch, or more batches beyond ±3 SD
-  than chance gives (at least 2, and over 2% of the window).
-- **Stable**: none of these.
-- **Too few batches**: fewer than 10 values in the recent window or in the
-  baseline.
-
-A shift is a change, not a verdict: whether it matters depends on the
-parameter. **Only shifted or on watch** shortens the list.
-
-Click a row to see that parameter's **trend plot** under the table: every
-batch of the period, the recent window shaded, with the same **Trend fit**,
-**EWMA** and **CUSUM** as on the Investigation tab (see *Trend fit*, *EWMA
-chart* and *CUSUM chart*) and **Colour by site**. Under the plot, the
-comparison in sentences (medians, the Hodges-Lehmann difference with its
-interval, the Mann-Whitney test) and the **OOS rate by value**: the share of
-OOS batches in quarters of the parameter's values. **Investigate** opens the
-Investigation tab on the parameter, with the recent window as the batches of
-interest and the baseline as the background.
-
-Categorical parameters with 2 to 30 categories are under **Categorical
-parameters**: each category's share per month, and whether the mix in the
-recent window differs from the baseline.
-
-### Overview
-
-The state of manufacturing in one screen: batches started, batches in
-process, the OOS rate of the recent window against the baseline, how many
-parameters shifted, and the median time from the first to the last dated
-stage. Below: batches per month by site, the OOS rate per month on a p-chart
-(see *Share of batches of interest per month* for how to read one), the OOS
-rate per type with its 95% interval and the baseline as a tick, the batches
-in process by stage, and **What moved**: the most shifted parameters.
-
-### Pipeline
-
-The batches **in process**: started at most 45 days before the data's last
-date and not yet shipped. A batch's **stage** is the last one with data: a
-dated stage (apheresis, cryopreservation, shipment, infusion) is reached when
-its date is filled in, a process day when at least half of its parameters
-have a value.
-
-The table lists them with the number of values recorded and how many are
-**unusual**: outside the central 98% of the completed batches. About 2% of
-any batch's values are unusual by chance, so a batch **stands out** only when
-it has more than chance gives (fewer than 1 in 100 batches would have as
-many). Click a row for the batch's most unusual values, as their distance
-from the typical value; **Investigate** opens the Investigation tab with the
-batch as the batch of interest.
-
-**Not closed, older** counts batches of the period that started more than 45
-days ago and have no shipment date: terminated, or never recorded.
-
-**Lead times** shows the days between the dated stages per month, and the
-recent window against the baseline. Batches that are not through a step yet
-are left out, so the newest months lean to the fast batches.
-
-### Patient
-
-What comes in: the parameters the catalogue files under *Starting material
-and patient*, with variation source *Patient / starting material*, or on
-process day *Apheresis*. Scorecard and trend as described above.
-
-### Process
-
-The manufacturing steps. Pick a **process day** along the top (the number of
-shifted parameters is shown on each), and narrow it by **Functional type**
-or **Variation source** (biological response, operator, equipment, raw
-material, ...). Scorecard and trend as described above.
-
-**Across process days** shows a quantity measured on three or more days (for
-example glucose per cell on days 6, 8 and 10) as one profile: the baseline's
-median and middle half per day, and the recent median.
-
-### Final product
-
-Quality attributes and release. At the top, the rate of any OOS type per
-month and all types side by side. **Key quality attributes** are small trend
-plots of the attributes named in the config (`monitor.key_cqas`): grey band
-for the baseline's middle half, orange line for the monthly median, blue
-shade for the recent window. Then the scorecard of every final product
-parameter.
-
-Recent batches without an OOS result yet are left out of the rates; the page
-says how many.
-
-### Materials
-
-Raw material and vector lots: did a parameter move when a lot changed? Pick
-the **parameter** at the top. For every material (the categorical parameters
-with variation source *Raw material / vector*), each lot is compared with
-the lot used before it (Mann-Whitney; lots in order of their median date of
-use; lots with fewer than 10 values are skipped). The q-values are corrected
-over every lot change of every material.
-
-The table lists the materials, those with the most lot changes at which the
-value **moved** (q < 0.05) first. Click one for the plot: every batch, each
-lot's median as a bar over the time the lot was in use, and a dashed line at
-each lot change where the value moved, labelled with the new lot. The table
-under it has every lot change with both medians and the shift in within-lot
-standard deviations.
-
-A lot change shows *when* the value moved, not *why*. When a parameter
-shifts on a date, every material whose lot changed near that date shows a
-move, and so would a change of site or procedure. Use the table to see
-which materials changed together, and what you know of the process to tell
-them apart. **Investigate** opens the parameter on the Investigation tab,
-coloured by the material's lots.
-
-### Sites
-
-How the manufacturing sites compare over the whole period: the OOS rate per
-site with its 95% interval, batches and median lead times per site, and
-every numerical parameter tested for a difference between sites
-(Kruskal-Wallis, with Benjamini-Hochberg q-values). **Gap (SD)** is the
-distance between the highest and the lowest site median in within-site
-standard deviations. Click a row for the values per site and the monthly
-median per site, which shows whether the gap is steady.
-
-A difference between sites can come from the site or from what the site
-received: patients, material lots, the period it was active.
-
-### CPV
-
-Continued process verification: is each parameter still in its state of
-control? Pick a **parameter set** (key quality attributes, final product, or
-a process day). The heat map is the x-bar chart of every parameter at once:
-each cell is one month's mean, as its distance from the baseline mean in
-standard errors. White is on target, blue below, red above; a dot marks a
-month beyond the 3-sigma control limits. Centre and sigma (mean moving range
-/ 1.128) come from the baseline batches only.
-
-With many parameters and months, a few dots are expected by chance (about 3
-in 1,000 cells). A row of dots is a shift.
-
-Click a row in the table for the parameter's control chart, with EWMA and
-CUSUM switched on.
-
-**CPV report (PDF)** downloads the view as a report for the file: the scope
-(parameter set, period, recent window, baseline, filters), a summary with
-the OOS rate, the heat map, the table of parameters, control charts of the
-parameters that are out of control, shifted or on watch (up to 12), the
-methods, and the provenance (file hashes, versions). For a monthly report,
-set the period and the recent window to the month's end, pick a fixed
-baseline so every month is judged against the same reference, and download
-one report per parameter set.
-
-### What the tabs need from the data
-
-The tabs group the parameters by the catalogue's **Functional Type**,
-**Process Day** and **Variation Source** (`parameter_metadata.catalog` in the
-config). Without them the Patient, Process and Final product tabs say so.
-The OOS charts need the OOS columns, the pipeline and lead times the date
-columns; see `monitor` under *Sections of the config file*. A chart whose
-columns are missing is left out.
-
-## Investigation: quick start
-
-Everything from here to *Configuration* is about the **Investigation** tab.
-
-1. Check the **selection bar** at the top. By default it compares this
-   week's batches with the batches of the past year.
-2. Pick the parameter from **Parameter** in the sidebar. Type a few
-   letters of its name in the list to find it.
-3. Read the plot: grey points are all batches, dark blue rings are the batches of
-   interest. The **Batches of interest** table at the bottom (folded; click
-   its title to open it) gives each batch of interest's percentile and
-   distance from the trend.
-4. Switch on **Trend**, **EWMA** or **CUSUM** in the sidebar to look for
-   shifts and drifts.
-5. Click a row in that table to mark that batch with a star in
-   the plot.
-6. Read **Statistics** under the plot: the headline says whether the
-   parameter differs between the two sets, and how sure that is.
-
-For the machine learning view, click **Open glassbox run** and open the
-run's results folder (see *Glassbox run*). *Statistics* explains the numbers.
-
-## Page layout
-
-The dashboard is one page:
-
-- **Selection bar** (top): the two batch sets and the buttons to change them.
-- **Title**: the name of the plotted parameter, as on the y-axis, with its
-  unit and transform.
-- **Plot**: the chosen parameter over time, with notes under it.
-- **Feature relevance**: only while a glassbox run is open. The model's
-  contribution charts; see *Glassbox run*.
-- **Statistics**: the difference between the two sets for the plotted
-  parameter, in plain words, with the numbers behind it; see *Statistics*.
-- **Batches of interest**: a table with one row per batch of
-  interest, folded; click its title to open it.
-- **Warnings and messages** (bottom, folded).
-- **Sidebar** (left): everything that changes what the plot shows, the
-  **Help** button, and the name of the data and config files. With a glassbox
-  run open, its **Glassbox run** group (title, model and *How good is the
-  model?*) is at the top.
+- next to a parameter: that parameter, with the recent window as the batches
+  of interest and the baseline as the background;
+- next to a batch on the Pipeline tab: that batch as the batch of interest,
+  against the past year, on its most unusual parameter;
+- on the Materials tab: the parameter, with the points coloured by the
+  material's lots.
 
 The sidebar can be folded away with the double arrow at its top, and dragged
 wider at its right edge.
 
-## Selecting batches
+## Monitoring · How it works
+
+### The sidebar
+
+The monitoring tabs share these choices:
+
+- **Period**: the manufacturing start dates the tabs look at: the last 6, 12
+  or 24 months, all data, or **Custom** dates.
+- **Recent window**: the newest 30, 60, 90 or 180 days of the period.
+- **Baseline**: what the recent window is compared with: **Rest of the
+  period** or **Fixed dates** (see *Fixed baseline*).
+- **Manufacturing sites**: keep only some sites. Empty means all sites.
+- **Re-manufactured batches**: include them, exclude them, or show only
+  them (when the data has a re-manufacture column).
+
+At the bottom: the data's last date (*Data as of*), the number of batches,
+and the data and config files in use.
+
+### Recent window and baseline
+
+Every monitoring tab splits the batches in two by manufacturing start date:
+
+- the **recent window**: the last 30 to 180 days of the period;
+- the **baseline**: by default the rest of the period, before the recent
+  window.
+
+All statistics on the monitoring tabs compare the recent window with the
+baseline. The line under each page title names both, for example *Recent:
+191 batches started 2026-06-04 to 2026-09-01 · baseline: 580 batches from
+2025-09-02*.
+
+A baseline should be a time you trust. When the baseline itself contains a
+shift, the comparison is with the average of before and after it, and
+control limits come out too wide. Use a fixed baseline in that case.
+
+### Fixed baseline
+
+**Baseline** in the sidebar has two choices:
+
+- **Rest of the period** (the default): everything in the period before the
+  recent window. It moves along as new data comes in.
+- **Fixed dates**: one date range you pick under **Baseline dates**,
+  wherever it lies, for example the months after the last process change.
+  It stays the same from month to month, so the scorecard, the control
+  limits on the CPV tab and the CPV report keep one reference. Days of the
+  recent window are never part of it.
+
+With a fixed baseline before the period, the plots show the baseline batches
+and the period, with the gap between them. The config can set the fixed
+baseline the dashboard opens on (`monitor.baseline`, see *Sections of the
+config file*).
+
+### Data as of
+
+The period ends at the **data's last date**: the latest date recorded in the
+data (never later than today). It is shown at the bottom of the sidebar. The
+dashboard shows the data as it was pulled: with a file from last week, "the
+last 90 days" are the 90 days before that file's last date.
+
+### The scorecard
+
+The Patient, Process and Final product tabs list their numerical parameters
+in a scorecard: one row per parameter, the most changed first.
+
+| Column | Meaning |
+| --- | --- |
+| **Status** | The row summed up; see *Status*. |
+| **Process day** | The parameter's process day in the catalogue. |
+| **Recent**, **Baseline** | The median of each group of batches. |
+| **Shift (SD)** | Recent median minus baseline median, in baseline standard deviations (see *Standard deviation (SD)*). +1 means the typical recent batch sits one SD above the typical baseline batch. |
+| **q** | Is the difference more than chance? The p-value of recent against baseline (Mann-Whitney test), corrected for testing every parameter at once (see *q-value*). Below 0.05: unlikely to be chance alone. |
+| **Beyond ±3 SD** | Recent batches further than 3 baseline SD from the baseline median: single unusual batches. |
+| **EWMA signals** | Recent batches at which the EWMA chart is outside its limits (see *EWMA chart*), with normal taken from the baseline. |
+| **Trend** | The monthly medians over the period, as a small line. |
+| **n recent** | Recent batches with a value. |
+
+The q-value is corrected over all numerical parameters of the data, so a
+parameter has the same q and the same status on every tab.
+
+**Only shifted or on watch** shortens the list. Click a column header to
+sort; the search and download icons appear when hovering the table.
+
+### Status
+
+| Status | When |
+| --- | --- |
+| **▲ Shifted up**, **▼ Shifted down** | The recent median differs from the baseline (q below 0.05) by at least 0.5 SD. |
+| **◆ Watch** | Weaker evidence, any of: a smaller difference that is still unlikely to be chance (q below 0.05, less than 0.5 SD); the EWMA outside its limits at the latest batch; or more recent batches beyond ±3 SD than chance gives (at least 2, and over 2% of the recent batches). |
+| **Stable** | None of these. |
+| **Too few batches** | Fewer than 10 values in the recent window or in the baseline: nothing is tested. |
+
+A shift is a change, not a verdict. Whether it matters depends on the
+parameter and its direction; the status says where to look.
+
+### A parameter's trend and statistics
+
+Click a row of a scorecard. Under the table:
+
+- the parameter's name with its process day, functional type and variation
+  source, and its description;
+- the **trend plot**: every batch of the period by manufacturing date, the
+  recent window shaded in light blue, with a time-period slider under it.
+  The switches above it add the **Trend fit** (on by default), the **EWMA**
+  and the **CUSUM** (see *Charts and methods*; normal comes from the
+  baseline), and **Colour by site**. The plot works like the one on the
+  Investigation tab (see *Working with the plot*);
+- the **comparison in sentences**: both medians, the typical difference with
+  its interval, how often a recent batch is higher than a baseline batch,
+  the p- and q-value, and the counts behind the status (see *Statistics in
+  plain words*);
+- **OOS rate by value**: the batches of the period split into four groups of
+  about equal size by their value, lowest first, with the share of OOS
+  batches in each. A staircase going up or down means the OOS rate depends
+  on the value. Shown when the data has an OOS column and OOS batches;
+- **Investigate**: opens the parameter on the Investigation tab.
+
+### Categorical parameters
+
+Scorecards hold numerical parameters. A tab's categorical parameters with 2
+to 30 categories in the period (so lots of ids drop out) are under
+**Categorical parameters**, below the trend. Pick one to see each category's
+share of the batches per month, its share in the recent window and in the
+baseline, and whether the mix differs between the two (Fisher's exact test
+for two categories, otherwise a simulated chi-square test). Categories with
+fewer than 10 batches are pooled as *Other*.
+
+## Monitoring · The tabs
+
+### Overview
+
+The state of manufacturing in one screen.
+
+**Tiles** (top):
+
+- **Batches started**: in the recent window, against the same number of days
+  before it.
+- **In process now**: see *Pipeline*.
+- **OOS rate, recent**: the share of recent batches that are OOS, against
+  the baseline in percentage points. Batches without an OOS result yet are
+  left out. Hover the question mark for the counts and intervals.
+- **Parameters shifted**: how many numerical parameters have the status
+  Shifted, and how many are on watch, of all those monitored.
+- **Lead time** (for example *Apheresis → Infused*): the median number of
+  days from the first to the last dated stage, against the baseline.
+  Batches that are not through yet are left out, so the recent value leans
+  to the fast batches.
+
+**Charts**:
+
+- **Batches started per month**, stacked by site.
+- **OOS rate per month**, with control limits (see *P-chart*). Months above
+  the upper limit are ringed and named under the chart.
+- **OOS rate by type**: bar: the recent rate with its 95% interval; tick:
+  the baseline rate. Types that are higher than the baseline (Fisher's
+  exact test, p below 0.05) are named under the chart.
+- **Batches in process**, by the last stage with data and by site.
+
+**What moved** (bottom): up to 12 shifted parameters, the largest shifts
+first, with their process day and functional type. Open the Patient, Process
+or Final product tab for their trends.
+
+### Pipeline
+
+The batches **in process**: started at most 45 days before the data's last
+date and not yet shipped.
+
+A batch's **stage** is the last one with data. A dated stage (apheresis,
+cryopreservation, shipment, infusion) is reached when its date is filled in;
+a process day (day 0, 1, 3, 6, 8, 10, final product testing) when at least
+half of that day's parameters have a value.
+
+**Tiles**: batches in process; batches started in the last 7 days; batches
+**standing out**; and **Not closed, older**: batches of the period that
+started more than 45 days ago and have no shipment date (terminated, or
+never recorded).
+
+**Batches in process** (table), the batches with the most unusual values
+first:
+
+- **Days**: days since manufacturing start, at the data's last date.
+- **Values**: numerical parameters recorded so far.
+- **Unusual**: recorded values outside the central 98% of the completed
+  batches (below their 1st or above their 99th percentile).
+- **Stands out** (●): about 2% of any batch's values are unusual by chance.
+  A batch stands out when it has more than chance gives: fewer than 1 in 100
+  batches would have as many.
+
+Click a row for the batch's 15 most unusual values: each as its distance
+from the typical value of the completed batches, in standard deviations
+(grey band: within ±3; red: above, blue: below; the scale stops at ±8).
+Hover a point for the value, the typical value and the percentile.
+**Investigate** opens the Investigation tab with the batch as the batch of
+interest.
+
+**Lead times** (bottom): the days between the dated stages. The chart shows
+the monthly median of each step; the table compares the recent window with
+the baseline (Mann-Whitney test). Batches that are not through a step yet
+are left out, so the newest months lean to the fast batches.
+
+### Patient
+
+What comes in: the parameters the catalogue files under functional type
+*Starting material and patient*, variation source *Patient / starting
+material*, or process day *Apheresis*. A scorecard, the picked parameter's
+trend, and the categorical parameters (see *The scorecard*).
+
+### Process
+
+The manufacturing steps: every parameter that is not on the Patient or Final
+product tab.
+
+- Pick a **process day** along the top, in process order. The number of
+  shifted parameters is shown on each day.
+- Narrow it by **Functional type** (activation, transduction, growth and
+  expansion, ...) or **Variation source** (biological response, operator,
+  equipment, raw material, ...).
+
+Then the scorecard, the picked parameter's trend, and the categorical
+parameters.
+
+**Across process days** (bottom, folded) shows a quantity measured on three
+or more days, for example glucose per cell on days 6, 8 and 10, as one
+profile: the baseline's median and middle half per day (grey), and the
+recent median (blue). Each day is its own measurement; the lines only join
+the medians.
+
+### Final product
+
+Quality attributes and release: the parameters on process day *Final
+Product*, *Post-Thaw* or *Post-Release*, or with variation source *Outcome*.
+
+- **OOS** (top): left, the rate per month of the OOS type picked in the list
+  above the chart, with control limits (see *P-chart*); right, every type's
+  recent rate against the baseline. Recent batches without an OOS result yet
+  are left out; a line says how many.
+- **Key quality attributes**: small trend plots of the attributes named in
+  the config (`monitor.key_cqas`). Grey points: batches; grey band: the
+  baseline's middle half, with its median dashed; orange line: the monthly
+  median; blue shade: the recent window. A status other than Stable is in
+  the plot's title.
+- **All final product parameters**: the scorecard, the picked parameter's
+  trend, and the categorical parameters.
+
+### Materials
+
+Did a parameter move when a raw material or vector lot changed?
+
+1. Pick the **Parameter** at the top (by default the first key quality
+   attribute).
+2. The table lists every **material**: the categorical parameters with
+   variation source *Raw material / vector* that were used in at least two
+   lots. For each material, every lot is compared with the lot used before
+   it (Mann-Whitney test; lots in order of their median date of use). A
+   comparison needs at least 10 values in both lots; smaller lots are
+   skipped.
+3. Click a material for the plot and its lot changes.
+
+**Table of materials**, those with the most moves first:
+
+- **Lots**: lots used in the period; **Changes tested**: lot changes where
+  both lots have enough values.
+- **Moved**: lot changes at which the parameter differs between the two
+  lots (q below 0.05). The q-values are corrected over every lot change of
+  every material (see *q-value*).
+- **Largest shift (SD)**: the largest difference between two consecutive
+  lots' medians, in within-lot standard deviations; **Smallest q**.
+
+**Plot**: grey points are the batches; each dark bar is a lot's median,
+drawn over the time the lot was in use; an orange dashed line marks a lot
+change at which the value moved, labelled with the new lot. Under it, every
+lot change with both medians, the shift and the q-value (● = moved).
+
+A lot change shows *when* the value moved, not *why*. When a parameter
+shifts on a date, every material whose lot changed near that date shows a
+move, and so would a change of site or procedure. Use the table to see which
+materials changed together, and what you know of the process to tell them
+apart.
+
+The sidebar's period and filters apply; the recent window and the baseline
+play no part on this tab.
+
+### Sites
+
+How the manufacturing sites compare, over the recent window and the baseline
+together.
+
+- **OOS rate per site**, with 95% intervals; the dashed line is the rate
+  over all batches, and the line under the chart says whether the sites
+  differ.
+- **Per site**: batches, OOS count and rate, and the median of each lead
+  time in days.
+- **Parameters that differ between sites**: every numerical parameter,
+  tested for a difference between the sites (Kruskal-Wallis test, with
+  q-values over all parameters). **Gap (SD)** is the distance between the
+  highest and the lowest site median, in within-site standard deviations;
+  **Lowest** and **Highest** name those sites. A site needs at least 10
+  values of a parameter to take part. **Only those that differ** (on by
+  default) keeps the parameters with q below 0.05.
+
+Click a row for the values per site (box plots) and the **monthly median per
+site**, which shows whether the gap is steady or belongs to one period.
+
+A difference between sites can come from the site, or from what the site
+received: patients, material lots, the period it was active. With a site
+filter that leaves one site, the tab asks you to clear it.
+
+### CPV
+
+Continued process verification: is each parameter still in its state of
+control?
+
+1. Pick a **Parameter set**: the key quality attributes, the final product
+   parameters, one process day, or all parameters.
+2. Read the tiles: parameters charted, how many are **in control in the
+   recent window** (no recent month beyond the control limits), and how
+   many are not.
+3. Read the **heat map**: one row per parameter, one column per month. Each
+   cell is that month's mean compared with the baseline mean (see *Control
+   limits*). White: on target; blue: below; red: above; a dot (●): beyond
+   the 3-sigma control limits; empty: fewer than 3 values that month. The
+   parameters with the most recent months out of control are at the top (at
+   most 40; the table has all).
+4. Click a row of the table under it for the parameter's **control chart**:
+   its trend plot with EWMA and CUSUM switched on.
+
+A single dot can be chance: with many parameters and months, about 3 cells
+in 1,000 are beyond the limits when nothing changed. A row of dots, or a row
+that turns from white to one colour, is a shift.
+
+**Table**: **Months out, recent** and **Months out, period** count the dots
+in the recent window and in the whole period; the other columns are the
+scorecard's (see *The scorecard*).
+
+Control limits come from the baseline batches only. For CPV, use a **fixed
+baseline** you trust (see *Fixed baseline*); with *Rest of the period* the
+limits move every time new data comes in.
+
+### CPV report
+
+**CPV report (PDF)**, under the table on the CPV tab, downloads the view as
+a report for the file:
+
+- the scope: parameter set, period, recent window, baseline, site and
+  re-manufacture filters;
+- a summary: parameters in and out of control, those shifted or on watch,
+  and the OOS rate of the recent window and the baseline;
+- the heat map and the table of parameters (the 40 most out of control);
+- control charts of the parameters that are out of control in the recent
+  window, shifted or on watch (at most 12): the batches, the baseline centre
+  and 3-sigma limits, and the EWMA with its limits;
+- the methods, the points to read with care, and the provenance: when it was
+  made, the dashboard version, and the data, parameter list and config files
+  with their SHA-256 checksums.
+
+For a monthly report: set the period so it ends with the month, set the
+recent window, pick a fixed baseline so every month is judged against the
+same reference, and download one report per parameter set.
+
+## Investigation · Overview
+
+The Investigation tab compares **batches of interest** (for example this
+week's batches) with **background batches** (for example everything made in
+the past year) for one parameter at a time. You pick the two sets at the top
+of the page and the parameter in the sidebar. With a glassbox run open, the
+run's own two classes are compared, and the model's feature relevance is
+shown next to the process data.
+
+### Quick start
+
+1. Check the **selection bar** at the top. By default it compares this
+   week's batches with the batches of the past year.
+2. Pick the parameter from **Parameter** in the sidebar. Type a few letters
+   of its name in the list to find it.
+3. Read the plot: grey points are all batches, dark blue rings are the
+   batches of interest.
+4. Switch on **Trend**, **EWMA** or **CUSUM** in the sidebar to look for
+   shifts and drifts.
+5. Read **Statistics** under the plot: the headline says whether the
+   parameter differs between the two sets, and how sure that is.
+6. Open the **Batches of interest** table at the bottom (folded; click its
+   title) for each batch's percentile and distance from the trend. Click a
+   row to mark that batch with a star in the plot.
+
+For the machine learning view, click **Open glassbox run** and open the
+run's results folder (see *Glassbox run*).
+
+### Page layout
+
+From top to bottom:
+
+- **Selection bar**: the two batch sets and the buttons to change them.
+- **Title**: the plotted parameter, as on the y-axis, with its unit and
+  transform.
+- **Plot**: the parameter over time, with notes under it.
+- **Feature relevance**: only while a glassbox run is open; see *Glassbox
+  run*.
+- **Statistics**: the difference between the two sets for the plotted
+  parameter, in plain words, with the numbers behind it.
+- **Batches of interest**: a table with one row per batch of interest,
+  folded.
+- **Warnings and messages**: folded; its title says how many there are.
+
+The **sidebar** holds everything that changes what the plot shows:
+**Parameter**, **Display** and **Colour**, and the names of the data and
+config files. With a glassbox run open, its **Glassbox run** group (title,
+model and *How good is the model?*) is at the top.
+
+## Investigation · Selecting batches
 
 ### The selection bar
 
@@ -297,15 +495,16 @@ interest are taken out of the background.
 
 ### Default selection
 
-When the dashboard opens, and whenever you click **Default**:
+When the tab is first opened, and whenever you click **Default**:
 
 - batches of interest: all batches made this week, Monday to Sunday;
 - background: all batches made from the same day one year ago up to today
   (28 February when today is 29 February), without the batches of interest;
 - both sets: all sites, re-manufactured batches included.
 
-If no batch was made this week yet, the set of interest is empty and the plot
-shows the background only.
+The default follows today's date, not the data's last date. If the data has
+no batch made this week, the set of interest is empty and the plot shows the
+background only.
 
 ### Editing the selection
 
@@ -332,41 +531,29 @@ a batch is never compared with itself.
 At the top of the pop-up, **Clear both** and **Default selection** do the same
 as **Clear** and **Default** in the bar. Click **Done**, or close the pop-up,
 to update the dashboard. The selection is kept while the pop-up is closed and
-while you read this help.
+while you are on another tab.
 
 When a filter change rules out batches you picked by id, they are dropped
 from the pick list.
 
-## Choosing the parameter
+## Investigation · The sidebar
 
-### Finding a parameter
+### Parameter
 
-Click **Parameter** and type: the list keeps the parameters whose name
-matches what you typed.
+**Parameter** lists every parameter that is in the metadata and has a column
+in the data, with its value type. Its title says how many are listed, for
+example *Parameter (12 of 619)*.
 
-### Filter by metadata
+- **To find a parameter**, click the list and type: it keeps the names that
+  contain what you typed.
+- **Filter by metadata** folds open one filter per metadata column (in the
+  sample setup: Functional Type, Process Day, Actionable? and Variation
+  Source). Only parameters with one of the chosen values stay in the list;
+  an empty filter means all values. The fold-out's title says how many
+  filters are active.
 
-**Filter by metadata** folds open a filter per metadata column (in the sample
-setup: Functional Type, Process Day and Actionable?). Only parameters with one
-of the chosen values stay in the list; an empty filter means all values. The
-fold-out's title says how many filters are active. Search and filters work
-together.
-
-### The parameter list
-
-**Parameter** shows how many parameters match out of all parameters that are
-in the data, for example *Parameter (12 of 619)*. Each entry shows the
-parameter's name and its value type. You can also type in the list itself to
-jump to a name.
-
-Under the list, the parameter's description from the metadata file is shown,
-with your search words highlighted. A long description is shortened; hover over
-it to read the full text.
-
-Parameters that are listed in the metadata file but have no column in the
-data are left out.
-
-## Display options
+Under the list is the parameter's description from the metadata. A long
+description is shortened; hover over it to read all of it.
 
 ### Manufacturing site
 
@@ -395,7 +582,7 @@ value cannot be transformed are counted in a note under the plot.
 
 ### Suggested transform
 
-For numerical parameters the dashboard checks whether a transform would suit
+For numerical parameters with at least 20 values the dashboard checks whether a transform would suit
 the data better and, if so, shows a **Suggested: ...** button under
 **Transform**. Hover over it for the reason; click it to apply the transform:
 
@@ -422,39 +609,33 @@ same time.
 
 They only apply to numerical parameters; for other parameters a note says so.
 
-While EWMA or CUSUM is on, **Reference period (normal batches)** picks the
-dates the charts take "normal" from. All dates by default.
+While EWMA or CUSUM is on, **Reference period (normal batches)** appears
+under the switches; see *Reference period*.
 
-## Monitoring
+### Reference period
 
-What the plot adds to watch a parameter over time:
+EWMA and CUSUM need to know what is normal. They measure it (target and
+spread) from the **background batches made in the reference period**, and
+judge every batch, the batches of interest included, against it. So the
+shift you are looking for does not widen the limits.
 
-- **EWMA and CUSUM measure normal from the background**: target and spread
-  come from the background batches of the **reference period**; every batch,
-  the batches of interest included, is judged against them. So the shifts you
-  are looking for do not widen the limits. The reference period is shaded on
-  the plot when it is shorter than the plotted period. Pick a stable period
-  you trust.
-- **Only the side that matters**: when the parameter has a direction of
-  concern (low viability is a problem, high viability is not), EWMA and
-  CUSUM only signal on that side, and the CUSUM draws only that decision
-  line. This halves the false alarms.
-- **When and which way**: a line under the plot lists the signals, newest
-  first, for example *CUSUM: downward shift from 2025-06-27 (signal
-  2025-07-03), 4 batches signalling*. For the CUSUM, the start is its
-  estimate of when the shift began: the batch after the sum was last zero,
-  often days or weeks before the signal.
+**Reference period (normal batches)** picks the dates; all dates by default.
+Pick a stable period you trust. It is shaded light blue on the plot when it
+is shorter than the plotted period. With fewer than 3 reference batches, the
+first 100 plotted batches are used instead, and the note under the plot says
+so.
 
-To look at one site, pick it under **Manufacturing site**: the trend and the
-reference batches are then that site's.
+With one **Manufacturing site** chosen, the reference batches are that
+site's.
 
 ### Direction of concern
 
-The column *Direction of concern* of the parameter metadata file
-(`parameters.csv`) says which side of a parameter matters: `low`, `high` or
-`both` (empty means both). EWMA and CUSUM then only signal on that side.
-
-## Colouring points
+Some parameters matter on one side only: low viability is a problem, high
+viability is not. The column *Direction of concern* of the parameter
+metadata file says which side matters: `low`, `high` or `both` (empty means
+both). EWMA and CUSUM then only signal on that side, and the CUSUM draws
+only that decision line. This halves the false alarms. The monitoring tabs
+use the same setting for their EWMA.
 
 ### Colour points by
 
@@ -477,7 +658,7 @@ the remaining batches, and a category keeps its colour when others are
 filtered out. Batches of interest that are filtered out are listed under
 **Warnings and messages** at the bottom of the page.
 
-## Reading the plot
+## Investigation · The plot
 
 ### Axes and value types
 
@@ -500,13 +681,13 @@ categories of the batches of interest.
 
 ### Markers and lines
 
-- **Grey points** (or coloured, see *Colouring points*): all plotted batches.
+- **Grey points** (or coloured, see *Colour points by*): all plotted batches.
 - **Dark blue rings**: the batches of interest, a thin ring around the point.
 - **Star with label**: the batch picked in the **Batches of interest** table.
 - **Orange lines**: the trend fit, one line per segment.
 - **Orange dashed vertical lines**: trend breakpoints, labelled with their
   date.
-- **Orange crosses**: outliers left out of the trend fit.
+- **Small orange crosses**: outliers left out of the trend fit.
 - **Light blue shading**: the reference period of EWMA and CUSUM, when it is
   shorter than the plotted period.
 - **Dark line with dotted lines**: the EWMA and its control limits.
@@ -527,25 +708,43 @@ categories of the batches of interest.
   the plot as a PNG, switch between zoom and pan, and reset the axes. The
   expand icon shows the plot full screen.
 
-### Notes and warnings
+### Notes under the plot
 
-A single line under the plot notes what was left out or how it was computed,
-for example `22 without value or date · trend (flat segments) breaks: none ·
+A line under the plot notes what was left out or how it was computed, for
+example `22 without value or date · trend (flat segments) breaks: none ·
 EWMA/CUSUM normal from 1321 background batches made 2024-01-03 to 2026-08-31:
-target 66.46, σ 9.516, signals on the low side only`: batches without a value
-or date, values the transform cannot handle, the trend model and breakpoint
-dates, and where EWMA and CUSUM take normal from. With EWMA or CUSUM on, a
-second line lists the signals, newest first (see *Monitoring*).
+target 66.46, σ 9.516, signals on the low side only`. It can name:
 
-Warnings, such as batches of interest not made at the chosen site, filtered
-out by category, or without a value, batches of a glassbox run missing from
-the data, or duplicated batch ids, are collected in **Warnings and messages**
-at the bottom of the page. It is folded; its title says how many there are.
+- batches without a value or a date;
+- values the transform cannot handle;
+- the trend model and the dates of its breakpoints;
+- where EWMA and CUSUM take normal from.
 
-## Batches of interest table
+### Signals under the plot
 
-The table **Batches of interest**, near the bottom of the page, has one row per plotted batch of
-interest. It is folded: click its title to open it. It has:
+With EWMA or CUSUM on, a second line lists the signals, newest first, for
+example *CUSUM: downward shift from 2025-06-27 (signal 2025-07-03), 4
+batches signalling*. For the CUSUM, the start is its estimate of when the
+shift began: the batch after the sum was last zero, often days or weeks
+before the signal. At most three are listed; the line says how many earlier
+ones there are.
+
+### Warnings and messages
+
+Warnings are collected in **Warnings and messages** at the bottom of the
+page. It is folded; its title says how many there are. They cover:
+
+- batches of interest not made at the chosen site, filtered out by category,
+  or without a value;
+- batches of a glassbox run that are not in the data, and files of a run
+  that were left out or changed;
+- manufacturing dates that could not be read, and duplicated batch ids.
+
+## Investigation · Batches of interest table
+
+The table **Batches of interest**, near the bottom of the page, has one row
+per plotted batch of interest. It is folded: click its title to open it. Its
+columns:
 
 - batch id, manufacturing date and site;
 - **Value**: the value in original units;
@@ -569,7 +768,7 @@ star in the plot; click it again to remove the mark. The mark stays with that
 batch when you change the parameter or the selection; it only shows while the
 batch is in the table.
 
-## Glassbox run
+## Investigation · Glassbox run
 
 Glassbox is the machine learning pipeline that looks for what sets one class
 of batches apart from the rest: batches that went out of spec, or the batches
@@ -631,7 +830,7 @@ learned nothing would score (the share of batches of interest). If no model
 beats it, the sidebar and **Warnings and messages** say so:
 the contributions then describe the model rather than the process. Fold open
 **How good is the model?** for how well the model tells the batches of
-interest from the background; see *Statistics*.
+interest from the background; see *How good is the model?*.
 
 ### Feature relevance
 
@@ -687,12 +886,12 @@ batch's value, the typical value in the background, its percentile and z-score.
 ### Clicking a feature
 
 Click a feature's name, bar or dot in either chart to plot that feature: it becomes the
-**Parameter** in the sidebar, and the search text or metadata filters are
-cleared if they would hide it. The plotted parameter is in bold on a light blue
+**Parameter** in the sidebar, and the metadata filters are cleared if they
+would hide it. The plotted parameter is in bold on a light blue
 band in both charts. Greyed-out names are features the dashboard does not
 have as a parameter; clicking them shows a message instead.
 
-## Statistics
+## Investigation · Statistics
 
 The **Statistics** section, under the plot, answers three questions about the
 plotted parameter in plain words:
@@ -704,7 +903,8 @@ plotted parameter in plain words:
 It is written to be read by people who do not work with statistics every
 day. The sentences come first; every number behind them is one click away in
 *Numbers and methods*, and the whole record can be downloaded for the
-investigation file.
+investigation file. The terms (median, interval, p-value, AUC, ...) are
+explained under *Statistics in plain words*.
 
 ### Which batches are compared
 
@@ -739,76 +939,6 @@ run or another comparison where both groups are large.
 - **CSV** and **PDF** (bottom of the section): download the record. See
   *Downloading the record*.
 
-### The key ideas in one page
-
-**Median.** The middle value: half the batches are below it, half above.
-Unlike the average, a few extreme batches do not pull it around.
-
-**95% interval** (written "95% CI"). Every number computed from batches is
-an estimate: with other batches it would come out a little different. The
-interval is the range of values that are consistent with the data. A narrow
-interval means a precise estimate; a wide one means few batches or much
-variation. When the interval of a difference does not include zero (or the
-interval of an AUC does not include 0.5), the difference is, as a rule,
-clear.
-
-**p-value.** How surprising the observed difference would be if there were
-really no difference between the groups. A small p-value (below 0.05, one
-in twenty) means the difference is unlikely to be chance alone; the
-dashboard then calls it *clear* and says *higher* or *lower*. A large
-p-value means the data do not show a difference; it does not prove there is
-none. "p < 0.001" means less than one in a thousand. A p-value says nothing
-about how *big* a difference is: with thousands of batches a tiny difference
-can have a small p-value. Always read it together with the size (the typical
-difference, the AUC or the rates).
-
-**Typical difference.** How much higher or lower the value of a batch of
-interest typically is than that of a background batch, in the parameter's
-own units (statisticians call it the Hodges–Lehmann estimate: the median of
-the differences between every batch of interest and every background batch).
-"+1.39 (95% CI +1.18 to +1.6)" means batches of interest are typically about 1.4
-units higher, and with 95% confidence somewhere between 1.2 and 1.6.
-
-**AUC** (area under the curve). The chance that a randomly picked batch of
-interest has a higher value than a randomly picked background batch.
-
-- 0.5: no difference, a coin toss;
-- above 0.5: batches of interest tend to be higher; 1.0 would mean every
-  one of them is higher than every background batch;
-- below 0.5: they tend to be lower; 0.0 would be complete separation the
-  other way.
-
-As a rough guide, an AUC of 0.6 (or 0.4) is a modest difference, 0.7 (or 0.3)
-a clear one, and 0.8 (or 0.2) or beyond a strong one that you would see by
-eye in the plot. The AUC does not depend on the units, so it can be compared
-between parameters, as the screen does. Its p-value is from the Mann–Whitney
-test, which asks the same question.
-
-**Share of batches of interest.** For example "13 of 198
-(6.6%, 95% CI 4.0%–11%)". The interval is a Wilson interval, which stays
-sensible for small counts and for rates close to 0% or 100%.
-
-**Comparing within quarters.** Many things drift over time: a parameter's
-typical value, and also the share of batches of interest. If both happen to
-change over the same period, the parameter looks different in the batches of
-interest even when it has nothing to do with them. To rule that out, the
-dashboard also compares batches of interest with background batches **made in
-the same calendar quarter** only, and then
-combines the quarters (van Elteren test for numbers,
-Cochran–Mantel–Haenszel test for categories). A difference that survives
-this comparison cannot be explained by slow changes over time.
-
-**q-value.** When hundreds of parameters are tested, some look different by
-chance alone: at p < 0.05, about 1 in 20 unrelated parameters would. The
-q-value corrects for this (Benjamini–Hochberg). Among the parameters with
-q below 0.05, you can expect about 1 in 20 to be a false lead, however many
-parameters were tested.
-
-**Consistency.** A real process effect usually shows at every site and in
-every year. The dashboard repeats the comparison per site and per year and
-says whether the difference points the same way everywhere. A difference
-that exists at one site only points to something local to that site.
-
 ### Reading "This parameter"
 
 The first line is the **headline**:
@@ -829,7 +959,7 @@ Under it, for a **numerical parameter**, as far as they apply:
   time"), with its
   interval, the p-value and the number of batches in each group.
 - **Comparing only batches made in the same quarter …**: the check for
-  changes over time. It ends in one of:
+  changes over time (see *Comparing within quarters*). It ends in one of:
   - *still higher / still lower*: the difference holds within quarters;
   - *the difference is no longer clear; it may come from changes over
     time*: be careful, the parameter may only drift along with the share of batches of interest;
@@ -844,7 +974,7 @@ Under it, for a **numerical parameter**, as far as they apply:
   for the lowest and the highest group. This is often the easiest number to
   act on: "above 9 minutes, one batch in five is of interest".
 - **Consistent: higher in batches of interest at all 3 sites and in all 3 years.**
-  Or *Not consistent everywhere*, naming the sites or years where it goes
+  See *Consistency*. Or *Not consistent everywhere*, naming the sites or years where it goes
   the other way. Sites and years with fewer than 10 batches in a group are
   not judged.
 - **Missing more often in …**: only shown when one group clearly has more
@@ -885,27 +1015,24 @@ from 3 batches says little on its own.
 
 ### Share of batches of interest per month
 
-Only for a glassbox run's own groups. The chart shows the share of batches of
-interest of each month
-(dark line) against the overall rate (solid grey line) and two dotted
-**control limits**. The limits show how far a month's rate can stray from
-the overall rate by chance alone, given how many batches it had: they are
-wider for months with few batches. This is a **p-chart**, a standard
-statistical process control chart, with limits at 3 standard errors.
+Only for a glassbox run's own groups. The chart shows the share of batches
+of interest of each month against the overall rate and its control limits;
+see *P-chart* for how to read it.
 
-A month **above the upper limit** is ringed in dark blue and named in the text,
-for example "Jan 2024: 12 of 44 (27%, limit 22%)": that month had more batches
-of interest than chance explains, so look for what was different then (a lot, a
-change, a site). Months with fewer than 10 batches are never flagged. A
-month below the lower limit is unusually good. When no month is flagged, no
-single month stands out; the rate can still drift slowly, which the dark
-line shows.
+A month **above the upper limit** is ringed in dark blue and named in the
+text, for example "Jan 2024: 12 of 44 (27%, limit 22%)": that month had more
+batches of interest than chance explains, so look for what was different
+then (a lot, a change, a site). When no month is flagged, no single month
+stands out; the rate can still drift slowly, which the dark line shows.
+
+The chart covers the plotted batches only: the sidebar's filters apply.
 
 ### All parameters
 
 Click **Screen all N parameters** to test every parameter at once. It takes
 some seconds; the result is kept until the plotted batches change, when the
-button comes back. Each parameter is tested **within quarters** (see above),
+button comes back. Each parameter is tested **within quarters** (see *Comparing within
+quarters*),
 so parameters that merely drift over time drop out, and the list is sorted
 by q-value, strongest evidence first.
 
@@ -1024,10 +1151,150 @@ Both carry the **provenance**, so the result can be traced and repeated:
 - **The filters change the batches.** The statistics describe only the
   plotted batches; a result for one site is not a result for all sites.
 
-## Trend fit
+## Statistics in plain words
+
+The terms the dashboard uses, for people who do not work with statistics
+every day. Every comparison is between two groups of batches: **batches of
+interest** and **background batches** on the Investigation tab, the **recent
+window** and the **baseline** on the monitoring tabs. The examples below
+speak of batches of interest and background; read "recent" and "baseline"
+for the monitoring tabs.
+
+A test needs at least **10 batches with a value in each group**. With fewer,
+the dashboard says so and does not test: with so few batches, any "finding"
+would be mostly chance.
+
+### Median
+
+The middle value: half the batches are below it, half above.
+Unlike the average, a few extreme batches do not pull it around.
+
+### Standard deviation (SD)
+
+How much the batches normally vary around their typical value. About two
+thirds of the batches lie within 1 SD of the middle and almost all within 3
+SD, so a difference "in SD" says how big it is compared with the normal
+batch-to-batch variation, whatever the parameter's units: 0.2 SD is small,
+0.5 SD is visible in a plot, 1 SD is large.
+
+The monitoring tabs use a **robust** SD: 1.4826 × the median absolute
+deviation (the median distance of the batches from their median). A few
+extreme batches do not inflate it, as they do the ordinary SD. When more
+than half the values are identical, the ordinary SD is used instead.
+
+### 95% interval
+
+Written "95% CI". Every number computed from batches is
+an estimate: with other batches it would come out a little different. The
+interval is the range of values that are consistent with the data. A narrow
+interval means a precise estimate; a wide one means few batches or much
+variation. When the interval of a difference does not include zero (or the
+interval of an AUC does not include 0.5), the difference is, as a rule,
+clear.
+
+### p-value
+
+How surprising the observed difference would be if there were
+really no difference between the groups. A small p-value (below 0.05, one
+in twenty) means the difference is unlikely to be chance alone; the
+dashboard then calls it *clear* and says *higher* or *lower*. A large
+p-value means the data do not show a difference; it does not prove there is
+none. "p < 0.001" means less than one in a thousand. A p-value says nothing
+about how *big* a difference is: with thousands of batches a tiny difference
+can have a small p-value. Always read it together with the size (the typical
+difference, the AUC or the rates).
+
+For two groups of numbers the dashboard uses the **Mann-Whitney test**. It
+compares ranks, so it does not assume a bell-shaped distribution and is not
+thrown by a few extreme batches. For more than two groups (the sites) it
+uses the **Kruskal-Wallis test**, the same idea.
+
+### q-value
+
+When hundreds of parameters are tested, some look different by
+chance alone: at p < 0.05, about 1 in 20 unrelated parameters would. The
+q-value corrects for this (Benjamini–Hochberg). Among the parameters with
+q below 0.05, you can expect about 1 in 20 to be a false lead, however many
+parameters were tested.
+
+The dashboard uses q-values wherever it tests many things at once: the
+scorecards (every parameter), the Sites tab (every parameter), the Materials
+tab (every lot change of every material), and the screen under **All
+parameters** on the Investigation tab.
+
+### Typical difference
+
+How much higher or lower the value of a batch of
+interest typically is than that of a background batch, in the parameter's
+own units (statisticians call it the Hodges–Lehmann estimate: the median of
+the differences between every batch of interest and every background batch).
+"+1.39 (95% CI +1.18 to +1.6)" means batches of interest are typically about 1.4
+units higher, and with 95% confidence somewhere between 1.2 and 1.6.
+
+### AUC
+
+Area under the curve. The chance that a randomly picked batch of
+interest has a higher value than a randomly picked background batch.
+
+- 0.5: no difference, a coin toss;
+- above 0.5: batches of interest tend to be higher; 1.0 would mean every
+  one of them is higher than every background batch;
+- below 0.5: they tend to be lower; 0.0 would be complete separation the
+  other way.
+
+As a rough guide, an AUC of 0.6 (or 0.4) is a modest difference, 0.7 (or 0.3)
+a clear one, and 0.8 (or 0.2) or beyond a strong one that you would see by
+eye in the plot. The AUC does not depend on the units, so it can be compared
+between parameters, as the screen does. Its p-value is from the Mann–Whitney
+test, which asks the same question.
+
+On the monitoring tabs the same number is written as a sentence: "a recent
+batch is higher than a baseline batch 77% of the time".
+
+### Share and its interval
+
+A share of batches is given with its count and interval, for example "13 of
+198 (6.6%, 95% CI 4.0%–11%)". The interval is a Wilson interval, which stays
+sensible for small counts and for rates close to 0% or 100%. The dashboard
+uses it for the share of batches of interest, the OOS rates, and the bars
+with error bars.
+
+To compare a share between two groups it uses **Fisher's exact test**; for
+more than two categories, a chi-square test whose p-value is found by
+simulating 20,000 tables, which stays correct for small counts.
+
+### Comparing within quarters
+
+Used on the Investigation tab. Many things drift over time: a parameter's
+typical value, and also the share of batches of interest. If both happen to
+change over the same period, the parameter looks different in the batches of
+interest even when it has nothing to do with them. To rule that out, the
+dashboard also compares batches of interest with background batches **made in
+the same calendar quarter** only, and then
+combines the quarters (van Elteren test for numbers,
+Cochran–Mantel–Haenszel test for categories). A difference that survives
+this comparison cannot be explained by slow changes over time.
+
+### Consistency
+
+Used on the Investigation tab. A real process effect usually shows at every site and in
+every year. The dashboard repeats the comparison per site and per year and
+says whether the difference points the same way everywhere. A difference
+that exists at one site only points to something local to that site.
+
+### Association is not cause
+
+A parameter that differs between two groups may cause the difference, be
+caused by it, or travel along with the real cause: a lot change, a site, a
+season. Statistics narrow the search; process knowledge and experiments
+confirm the cause. See also *Reading the statistics with care*.
+
+## Charts and methods
+
+### Trend fit
 
 The trend fit looks for level shifts and changes in slope over time, over
-all plotted batches.
+all plotted batches. It is the orange line in the trend plots of every tab.
 
 1. Points more than 3 interquartile ranges below the first quartile or above
    the third quartile are left out as outliers (orange crosses).
@@ -1047,29 +1314,51 @@ within each segment stays exact.
 The numbers above are defaults, set in the `trend` section of the config
 file.
 
-## EWMA chart
+### Control limits
+
+A control chart asks whether a process still behaves as it did in a
+reference set of batches: the **baseline** on the monitoring tabs, the
+**reference period** on the Investigation tab.
+
+- The **centre** is the mean of the reference batches.
+- **Sigma** is their normal batch-to-batch variation: the average moving
+  range (the mean absolute difference between consecutive batches, in date
+  order) divided by 1.128, the usual estimate for individual values. Unlike
+  the ordinary SD, it is not inflated by a slow drift within the reference
+  batches.
+- The **control limits** lie 3 sigma on either side of the centre. A process
+  that has not changed stays within them almost always (about 997 times in
+  1,000), so a point beyond them is a signal worth a look.
+
+For a monthly mean (the CPV heat map) the limits are narrower: 3 sigma
+divided by the square root of the number of batches in the month, because a
+mean of many batches varies less than a single batch. The heat map shows
+each month's distance from the centre in these units (standard errors), so
+±3 is the limit for every cell.
+
+Control limits describe the process's own variation. They are not
+specification limits: a parameter can be in control and out of
+specification, or the reverse.
+
+### EWMA chart
 
 The exponentially weighted moving average (EWMA) smooths the values in
 manufacturing-date order, giving the newest batch a weight of 0.2 and the
 previous average the rest. It reacts to small, lasting shifts that single
 points do not show.
 
-- **Target and sigma** come from the **reference batches**: the background
-  batches of the reference period picked in the sidebar. The target is their mean;
-  sigma is their average moving range (the mean absolute difference between
-  consecutive batches) divided by 1.128, the usual estimate for individual
-  values. With fewer than 3 reference batches, the first 100 plotted batches
-  are used instead, and the note under the plot says so.
+- **Target and sigma** come from the reference batches, as described under
+  *Control limits*: the background batches of the reference period on the
+  Investigation tab, the baseline on the monitoring tabs.
 - **Control limits** lie at ±3 sigma, scaled for the averaging. They start
   narrow and widen to their final value over the first batches.
 - A **signal** (dark blue diamond) is a batch where the EWMA is outside the limits,
   on the side that matters (the parameter's direction of concern).
 
-Every plotted batch, the batches of interest included, is judged against the reference
-batches. The weight and the limits are set in the `spc` section of the config
+Every plotted batch is judged against the reference batches. The weight and the limits are set in the `spc` section of the config
 file.
 
-## CUSUM chart
+### CUSUM chart
 
 The tabular CUSUM adds up deviations from the target (the same target and
 sigma as the EWMA), in sigma units, in manufacturing-date order:
@@ -1082,9 +1371,26 @@ sigma as the EWMA), in sigma units, in manufacturing-date order:
   interval of 5 sigma (the dark blue dashed lines), on the side that matters.
 
 The point where a line leaves zero and keeps climbing shows when a shift
-started; the signal line under the plot names that date. The CUSUM is not reset after a signal, so a lasting shift keeps
+started; on the Investigation tab the signal line under the plot names that
+date. The CUSUM is not reset after a signal, so a lasting shift keeps
 signalling. The slack and decision interval are set in the `spc` section of
 the config file.
+
+### P-chart
+
+The control chart for a rate per month: the OOS rate on the Overview and
+Final product tabs, the share of batches of interest on the Investigation
+tab.
+
+- **Dark line**: the rate of each month.
+- **Solid grey line**: the rate over all months together.
+- **Dotted lines**: the control limits, 3 standard errors on either side.
+  They show how far a month's rate can stray from the overall rate by chance
+  alone, given how many batches the month had: they are wider for months
+  with few batches.
+- **Ringed month**: above the upper limit, so more than chance explains.
+  Months with fewer than 10 batches are never ringed. A month below the
+  lower limit is unusually good.
 
 ## Configuration
 
@@ -1095,59 +1401,112 @@ The dashboard reads its settings from a YAML file, in this order:
 1. the file named in the `DASHBOARD_CONFIG` environment variable;
 2. `config/config.local.yaml`, if it exists (not in version control, for
    your real data);
-3. `config/config.yaml`, which points at the synthetic sample data.
+3. `config/config.yaml`.
 
 The file in use is named at the bottom of the sidebar. Changes to the config,
 data or metadata files are picked up the next time the page updates.
 
 ### Sections of the config file
 
-- `data`: the path of the batch CSV (a `.csv.gz` works too), options for
-  reading it, and how to read the manufacturing dates (`date_format`,
-  `dayfirst`). Without a `date_format`, dates written in different ways in
-  one column are all read; dates that cannot be read are listed under
-  **Warnings and messages**, and those batches have no date.
-- `columns`: which column of the data holds each field the dashboard needs.
-  Batch id and manufacturing date are required; site and re-manufacture are
-  optional, and their filters disappear when left out.
-- `column_groups`: fields that offer a choice of columns.
-- `remanufacture.true_values`: the values that mark a batch as
-  re-manufactured, such as Y or Yes.
-- `parameter_metadata`: the metadata CSV with one row per parameter, and
-  which of its columns hold the name (`name_column`), value type
-  (`type_column`), description (`description_column`), the metadata
-  filters (`filter_columns`) and the direction of concern
-  (`limit_columns.direction`, see *Direction of concern*).
-- `parameter_metadata.catalog`: the parameter catalogue (Excel or CSV, one
-  row per parameter). Its columns win over the same columns of the metadata
-  CSV, and parameters it lists that the CSV does not have are added (read as
-  numbers when their values are numbers).
-- `monitor`: the monitoring tabs (all optional): `recent_days` (the default
-  recent window), `pipeline_days` (how long an unfinished batch counts as in
-  process), `oos.flag` and `oos.types` (the OOS columns; by default
-  `OOS? (Y/N)` and every column ending in `OOS (Y/N)`), `true_values`,
-  `stages` (the pipeline stages in order: a `label` with a date `column` or a
-  `process_day`), `closed_from` (the stage from which a batch has left the
-  pipeline), `key_cqas`, `baseline` (`start` and `end` of a fixed baseline),
-  `material_sources` (the variation sources whose parameters are lots), and `group_columns` (the metadata columns holding
-  functional type, process day and variation source).
-- `trend`: the trend fit settings (see *Trend fit*).
-- `spc`: the EWMA and CUSUM settings: `lam`, `L`, `k` and `h` (see *EWMA
-  chart* and *CUSUM chart*), and `baseline`, the number of first batches
-  used only when there are too few reference batches.
+| Section | What it sets |
+| --- | --- |
+| `data` | The path of the batch CSV (a `.csv.gz` works too), options for reading it, and how to read the manufacturing dates (`date_format`, `dayfirst`). Without a `date_format`, dates written in different ways in one column are all read; dates that cannot be read are listed under **Warnings and messages** on the Investigation tab, and those batches have no date. |
+| `columns` | Which column of the data holds each field the dashboard needs. Batch id and manufacturing date are required; site and re-manufacture are optional, and their filters disappear when left out. |
+| `column_groups` | Fields that offer a choice of columns. |
+| `remanufacture.true_values` | The values that mark a batch as re-manufactured, such as Y or Yes. |
+| `parameter_metadata` | The metadata CSV with one row per parameter, and which of its columns hold the name (`name_column`), value type (`type_column`), description (`description_column`), the metadata filters (`filter_columns`) and the direction of concern (`limit_columns.direction`). |
+| `parameter_metadata.catalog` | The parameter catalogue (Excel or CSV, one row per parameter; `path` and `name_column`). Its columns win over the same columns of the metadata CSV. Parameters it lists that the CSV does not have are added, without a value type: they are read as numbers when at least 80% of their values are numbers. |
+| `monitor` | The monitoring tabs; see *The monitor section*. |
+| `trend` | The trend fit: `max_breaks`, `min_segment_size`, `bic_margin`, `outlier_iqr` (see *Trend fit*). |
+| `spc` | EWMA and CUSUM: `lam`, `L`, `k`, `h` (see *EWMA chart* and *CUSUM chart*), and `baseline`, the number of first batches used only when there are too few reference batches. |
+
+### The monitor section
+
+All of it is optional; the defaults follow the names in the catalogue.
+
+| Setting | Meaning | Default |
+| --- | --- | --- |
+| `recent_days` | The recent window the tabs open on. | 90 |
+| `baseline` | `start` and `end` of a fixed baseline to open on. | none: the rest of the period |
+| `pipeline_days` | How long an unfinished batch counts as in process. | 45 |
+| `oos.flag` | The column that says a batch is OOS. | `OOS? (Y/N)` |
+| `oos.types` | The columns of the OOS types. | every column ending in `OOS (Y/N)` |
+| `true_values` | The values that mean yes in those columns. | Y, Yes, True, 1 |
+| `stages` | The pipeline stages in process order: each a `label` with a date `column` or a `process_day`. | apheresis, days 0 to 10, cryopreservation, final product, shipment, infusion |
+| `closed_from` | The stage from which a batch has left the pipeline. | Shipped |
+| `key_cqas` | The key quality attributes of the Final product and CPV tabs. | eight final product attributes |
+| `material_sources` | The variation sources whose categorical parameters are lots (Materials tab). | Raw material / vector |
+| `group_columns` | The metadata columns holding `functional_type`, `process_day` and `variation_source`. | Functional Type, Process Day, Variation Source |
+
+Stages, OOS columns and attributes that are not in the data are skipped.
+
+### What the tabs need from the data
+
+| Tab or chart | Needs |
+| --- | --- |
+| Patient, Process, Final product | The catalogue's Functional Type or Process Day column. |
+| Process filters, Materials | The catalogue's Variation Source column. Without it, the Materials tab takes the categorical parameters named *lot* or *batch*. |
+| OOS tiles and charts, OOS rate by value | The OOS columns. |
+| Pipeline, lead times | The stage date columns and the process days. |
+| Sites, site filter | The site column (`columns.site`). |
+
+A chart whose columns are missing is left out; a tab that cannot work
+without them says what it needs.
 
 ### Data requirements
 
 The data has one row per batch. A batch id that appears more than once is
-reported under **Warnings and messages**. Values that cannot be read as the parameter's type
-count as missing and are not plotted.
+reported under **Warnings and messages** on the Investigation tab. Values
+that cannot be read as the parameter's type count as missing and are not
+plotted.
 
 ## Troubleshooting
 
+### A monitoring tab says the parameters cannot be grouped
+
+The parameter metadata has no Functional Type or Process Day column. Add the
+catalogue under `parameter_metadata.catalog` in the config.
+
+### Every status is "Too few batches"
+
+The recent window or the baseline has fewer than 10 batches with a value.
+Check the line under the page title: pick a longer **Recent window** or
+**Period**, check the **Baseline dates**, or clear the site filter.
+
+### A status changed though the process did not
+
+With **Rest of the period** the baseline moves as the data grows and the
+period slides, so the comparison changes a little every time. Use a fixed
+baseline for a stable reference.
+
+### Many parameters are shifted at once
+
+Often the baseline contains a change, so "recent against baseline" compares
+after with a mix of before and after. Look at a trend plot for the date of
+the break and start a fixed baseline after it.
+
+### No batches in process
+
+The Pipeline tab counts batches started at most 45 days before the data's
+last date that have no shipment date. Check *Data as of* in the sidebar: an
+old data file has none. With other date columns than the sample's, set
+`monitor.stages` in the config.
+
+### The OOS charts are missing
+
+The data has no `OOS? (Y/N)` column. Name yours under `monitor.oos` in the
+config.
+
+### The Materials tab finds moves in many materials
+
+A parameter that shifted on one date shows a move in every material whose
+lot changed near that date. See *Materials*.
+
 ### The plot shows only grey points
 
-There are no batches of interest in the plot. With the default selection this
-happens when no batch was made this week yet. Use **Edit selection** to pick
+On the Investigation tab: there are no batches of interest in the plot. With
+the default selection this happens when the data has no batch made this
+week. Use **Edit selection** to pick
 other batches of interest.
 
 ### "No batches selected"
@@ -1169,8 +1528,11 @@ unchanged.
 
 ### The parameter I want is not in the list
 
-Clear the metadata filters. A parameter only
-appears when it is in the metadata file and has a column in the data.
+On the Investigation tab, clear the metadata filters. A parameter only
+appears when it is in the metadata file or the catalogue and has a column in
+the data. On the monitoring tabs, a parameter is on the tab its catalogue
+entry puts it on (see *Monitoring · The tabs*); the **All parameters** set on
+the CPV tab has every numerical one.
 
 ### The statistics say "Too few batches"
 
@@ -1183,8 +1545,3 @@ frame for the batches of interest, or open a glassbox run.
 The screen is kept for the batches it was run on. After a change of the
 selection, the site or the category filter, the plotted batches are different
 and the screen has to be run again.
-
-### The page looks different (fonts, colours)
-
-The theme is read from `.streamlit/config.toml`. Start the dashboard from
-the project folder with `streamlit run app.py`.
