@@ -32,8 +32,15 @@ df = pd.read_csv("batches.csv")
 df["trend_mean"] = trend_means(df["date"], df["value"])
 ```
 
+With a third column the trend is fitted separately for each group:
+
+```python
+df["trend_mean"] = trend_means(df["date"], df["value"], df["site"])
+```
+
 `trend_means` returns, for every row, the mean value of the trend segment the
-row's date falls in. Outliers and rows without a value get the mean of their
+row's date falls in (within its own group, if groups are given; a missing
+group value is a group of its own). Outliers and rows without a value get the mean of their
 segment; rows without a date get NaN, and every row gets NaN when there are too
 few points to fit.
 

@@ -55,3 +55,32 @@ def test_index_order_outliers_and_missing():
 def test_too_few_points_gives_nan():
     means = trend_means(_dates(5), pd.Series(np.arange(5.0)))
     assert means.isna().all()
+
+
+def test_groups_are_fitted_separately():
+    rng = np.random.default_rng(4)
+    n = 200
+    a = rng.normal(0, 1, n) + np.where(np.arange(n) >= 100, 5.0, 0.0)  # shift in group A
+    b = rng.normal(20, 1, n)  # no shift in group B
+    df = pd.DataFrame(
+        {"date": pd.concat([_dates(n), _dates(n)]), "value": np.r_[a, b], "group": ["A"] * n + ["B"] * n}
+    ).sample(frac=1, random_state=1)
+    means = trend_means(df["date"], df["value"], df["group"])
+    assert means.index.equals(df.index)
+    for g, y in (("A", a), ("B", b)):
+        sel = df["group"] == g
+        expected = trend_means(df.loc[sel, "date"], df.loc[sel, "value"])
+        assert np.allclose(means[sel], expected)
+    assert means[df["group"] == "A"].nunique() == 2
+    assert np.allclose(means[df["group"] == "B"], b.mean())
+
+
+def test_small_group_gives_nan_and_missing_group_is_own_group():
+    rng = np.random.default_rng(5)
+    n = 100
+    df = pd.DataFrame({"date": _dates(n), "value": rng.normal(0, 1, n), "group": ["A"] * 95 + ["B"] * 5})
+    df.loc[0:49, "group"] = None
+    means = trend_means(df["date"], df["value"], df["group"])
+    assert means[df["group"] == "B"].isna().all()
+    assert np.allclose(means[df["group"].isna()], df.loc[df["group"].isna(), "value"].mean())
+    assert np.allclose(means[df["group"] == "A"], df.loc[df["group"] == "A", "value"].mean())
