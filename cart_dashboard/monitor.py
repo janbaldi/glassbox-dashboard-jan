@@ -73,7 +73,7 @@ class Settings:
     oos_types: list[str] = field(default_factory=list)
     stages: list[Stage] = field(default_factory=list)
     closed_from: str | None = None  # the stage from which a batch has left the pipeline
-    functional_type: str | None = None  # metadata columns the pages group parameters by
+    functional_type: str | None = None  # catalogue columns the pages group parameters by
     process_day: str | None = None
     variation_source: str | None = None
     key_cqas: list[str] = field(default_factory=list)
@@ -195,7 +195,7 @@ def longest_run(side: np.ndarray) -> int:
 
 def scorecard(
     values: pd.DataFrame, dates: pd.Series, recent: pd.Series, baseline: pd.Series, spc: dict | None = None,
-    directions: dict[str, str] | None = None, period: pd.Series | None = None,
+    period: pd.Series | None = None,
 ) -> pd.DataFrame:
     """One row per parameter: the recent window against the baseline.
 
@@ -239,8 +239,7 @@ def scorecard(
                 row["p"] = 1.0
             ordered = x[recent & x.notna()].loc[d[recent & x.notna()].sort_values(kind="stable").index]
             row["run"] = longest_run(np.sign(ordered.to_numpy(float) - row["baseline"]))
-            charts = control_charts(d[both], x[both], reference=baseline[both],
-                                    direction=(directions or {}).get(name, "both"), **(spc or {}))
+            charts = control_charts(d[both], x[both], reference=baseline[both], **(spc or {}))
             if charts is not None:
                 signal = pd.Series(charts.ewma_signal, index=charts.index)
                 in_recent = signal[signal.index.isin(recent.index[recent])]

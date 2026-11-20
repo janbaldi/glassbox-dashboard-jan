@@ -22,7 +22,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = ROOT / "data" / "sample_batches.csv.gz"
-PARAMETERS = ROOT / "config" / "parameters.csv"
+PARAMETERS = ROOT / "catalog.xlsx"
 OUT = ROOT / "data" / "glassbox_demo"
 BATCH_ID = "Patient Lot/Batch #"
 TARGET = "car_oos_y_n_is_y"
@@ -85,7 +85,7 @@ decision_tree:
 def main(seed: int = 11) -> None:
     rng = np.random.default_rng(seed)
     df = pd.read_csv(SAMPLE, low_memory=False)
-    params = pd.read_csv(PARAMETERS, sep=";", encoding="utf-8-sig")
+    params = pd.read_excel(PARAMETERS)
     numeric = [
         p for p in params.loc[params["Value Type"] == "numeric", "Parameter"]
         if p in df.columns and df[p].notna().mean() > 0.9 and p not in DRIVERS

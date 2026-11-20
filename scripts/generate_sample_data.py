@@ -1,6 +1,6 @@
 """Generate a synthetic CAR-T batch dataset for trying out the dashboard.
 
-Creates one column per parameter in config/parameters.csv, with values that
+Creates one column per parameter in catalog.xlsx (with a value type), with values that
 match the parameter's value type.
 
     python scripts/generate_sample_data.py
@@ -133,7 +133,8 @@ def _cut(df: pd.DataFrame, params: pd.DataFrame, mfg: pd.Series) -> pd.DataFrame
 
 
 if __name__ == "__main__":
-    params = pd.read_csv(ROOT / "config" / "parameters.csv", sep=";", encoding="utf-8-sig")
+    params = pd.read_excel(ROOT / "catalog.xlsx")
+    params = params[params["Value Type"].notna()]  # parameters without a value type are not generated
     out = ROOT / "data" / "sample_batches.csv.gz"
     generate(params).to_csv(out, index=False)
     print(f"Wrote {out}")

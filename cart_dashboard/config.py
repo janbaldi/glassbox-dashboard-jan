@@ -27,7 +27,7 @@ class ConfigError(ValueError):
     """Raised when the configuration file is missing or malformed."""
 
 
-LIMIT_KEYS = ("lower_spec", "upper_spec", "lower_alert", "upper_alert", "direction")
+DEFAULT_EXCLUDE_VALUES = ["Y", "Yes", "True", "1", "X"]
 
 
 @dataclass
@@ -40,16 +40,13 @@ class DashboardConfig:
     columns: dict[str, str] = field(default_factory=dict)
     column_groups: dict[str, list[str]] = field(default_factory=dict)
     remanufacture_true_values: list[str] = field(default_factory=list)
-    parameters_path: Path | None = None
-    parameters_read_csv_options: dict[str, Any] = field(default_factory=dict)
+    parameters_path: Path | None = None  # the parameter catalogue (Excel or CSV), one row per parameter
+    parameters_read_options: dict[str, Any] = field(default_factory=dict)
     parameters_name_column: str = "Parameter"
     parameters_type_column: str = "Value Type"
-    parameters_description_column: str | None = None
     parameters_filter_columns: list[str] = field(default_factory=list)
-    parameters_limit_columns: dict[str, str] = field(default_factory=dict)  # lower_spec, ..., direction
-    catalog_path: Path | None = None  # the parameter catalogue (Excel or CSV), merged into the metadata
-    catalog_name_column: str = "Parameter"
-    catalog_read_options: dict[str, Any] = field(default_factory=dict)
+    parameters_exclude_column: str | None = None  # rows marked here are left out of the dashboard
+    parameters_exclude_values: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_VALUES))
     monitor: dict[str, Any] = field(default_factory=dict)  # settings of the monitoring pages (see monitor.settings)
     trend: dict[str, float] = field(default_factory=dict)  # keyword arguments for trend.fit_trend
     spc: dict[str, float] = field(default_factory=dict)  # keyword arguments for spc.control_charts
@@ -128,18 +125,15 @@ def load_config(path: str | Path | None = None) -> DashboardConfig:
             raise ConfigError(f"column_groups.{name} must be a list of column names in {path}")
         column_groups[str(name)] = [str(c) for c in cols]
 
-    meta = raw.get("parameter_metadata") or {}
-    if not meta.get("csv_path"):
-        raise ConfigError(f"'parameter_metadata.csv_path' is missing in {path}")
-
-    limit_columns = {str(k): str(v) for k, v in (meta.get("limit_columns") or {}).items() if v}
-    unknown = sorted(set(limit_columns) - set(LIMIT_KEYS))
-    if unknown:
-        raise ConfigError(f"parameter_metadata.limit_columns: unknown key(s) {unknown} in {path}; use {list(LIMIT_KEYS)}")
-
-    catalog = meta.get("catalog") or {}
-    if isinstance(catalog, str):
-        catalog = {"path": catalog}
+    if "parameter_metadata" in raw:
+        raise ConfigError(
+            f"'parameter_metadata' in {path} is no longer used: the parameters come from the catalogue alone. "
+            "Replace it with a 'parameters' section (see config/config.yaml)."
+        )
+    meta = raw.get("parameters") or {}
+    if not meta.get("path"):
+        raise ConfigError(f"'parameters.path' (the parameter catalogue) is missing in {path}")
+    exclude_values = meta.get("exclude_values")
     monitor = raw.get("monitor") or {}
     if not isinstance(monitor, dict):
         raise ConfigError(f"'monitor' must be a mapping in {path}")
@@ -156,16 +150,15 @@ def load_config(path: str | Path | None = None) -> DashboardConfig:
         columns=columns,
         column_groups=column_groups,
         remanufacture_true_values=true_values,
-        parameters_path=_resolve_path(str(meta["csv_path"])),
-        parameters_read_csv_options=dict(meta.get("read_csv_options") or {}),
+        parameters_path=_resolve_path(str(meta["path"])),
+        parameters_read_options=dict(meta.get("read_options") or {}),
         parameters_name_column=str(meta.get("name_column", "Parameter")),
         parameters_type_column=str(meta.get("type_column", "Value Type")),
-        parameters_description_column=str(meta["description_column"]) if meta.get("description_column") else None,
         parameters_filter_columns=[str(c) for c in meta.get("filter_columns") or []],
-        parameters_limit_columns=limit_columns,
-        catalog_path=_resolve_path(str(catalog["path"])) if catalog.get("path") else None,
-        catalog_name_column=str(catalog.get("name_column", "Parameter")),
-        catalog_read_options=dict(catalog.get("read_options") or {}),
+        parameters_exclude_column=str(meta["exclude_column"]) if meta.get("exclude_column") else None,
+        parameters_exclude_values=(
+            [str(v) for v in exclude_values] if exclude_values is not None else list(DEFAULT_EXCLUDE_VALUES)
+        ),
         monitor=dict(monitor),
         trend=dict(raw.get("trend") or {}),
         spc=dict(raw.get("spc") or {}),

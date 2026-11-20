@@ -32,8 +32,8 @@ def _product_mask(ctx: C.Ctx) -> pd.Series:
 def _needs_catalogue(ctx: C.Ctx) -> bool:
     if ctx.s.process_day or ctx.s.functional_type:
         return False
-    st.info("The parameter metadata has no Functional Type or Process Day column, so the parameters cannot be grouped. "
-            "Add the catalogue under `parameter_metadata.catalog` in the config.")
+    st.info("The parameter catalogue has no Functional Type or Process Day column, so the parameters cannot be grouped. "
+            "Add them to the catalogue, or name its columns under `monitor.group_columns` in the config.")
     return True
 
 

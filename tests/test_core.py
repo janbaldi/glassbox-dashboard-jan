@@ -23,7 +23,7 @@ from cart_dashboard.plots import (
     plot_values,
     timeline_scatter,
 )
-from cart_dashboard.search import highlight, search_parameters
+from cart_dashboard.search import contains_all, highlight
 from cart_dashboard.spc import control_charts
 from cart_dashboard.views.help_page import HELP_FILE
 from cart_dashboard.views.help_page import parse as parse_help
@@ -66,7 +66,7 @@ def cfg_and_df(tmp_path: Path):
                 },
                 "column_groups": {"g": ["VAL"]},
                 "remanufacture": {"true_values": ["yes"]},
-                "parameter_metadata": {"csv_path": str(meta), "read_csv_options": {"sep": ";"}},
+                "parameters": {"path": str(meta), "read_options": {"sep": ";"}},
             }
         )
     )
@@ -382,15 +382,11 @@ def test_app_runs_with_all_overlays():
     assert any("EWMA signal" in d.value.columns for d in at.dataframe)  # the batch table
 
 
-def test_parameter_search_needs_every_word_and_ranks_name_matches_first():
-    params = pd.DataFrame({
-        "name": ["Viable Cell Yield (%)", "Glucose", "Cell Count"],
-        "type": ["numeric"] * 3,
-        "description": ["", "Viable cell yield proxy", "Total cells"],
-    })
-    assert search_parameters(params, "viable YIELD")["name"].tolist() == ["Viable Cell Yield (%)", "Glucose"]
-    assert search_parameters(params, "cell total")["name"].tolist() == ["Cell Count"]
-    assert search_parameters(params, "  ")["name"].tolist() == params["name"].tolist()
+def test_search_needs_every_word():
+    texts = pd.Series(["Viable Cell Yield (%)", "Glucose", "Total Cell Count"])
+    assert contains_all(texts, "viable YIELD").tolist() == [True, False, False]
+    assert contains_all(texts, "cell total").tolist() == [False, False, True]
+    assert contains_all(texts, "  ").all()
     assert highlight("CUSUM limits `cusum`", "cusum") == "<mark>CUSUM</mark> limits `cusum`"
 
 

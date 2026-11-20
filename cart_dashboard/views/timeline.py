@@ -57,12 +57,12 @@ def short_text(text: str, query: str = "", limit: int = 120, title: str | None =
 
 
 def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | None:
-    """Filter the parameter list by metadata, then pick one (the list itself is searchable)."""
+    """Filter the parameter list by catalogue columns, then pick one (the list itself is searchable)."""
     filters = cfg.parameters_filter_columns
     keep = pd.Series(True, index=available.index)
     if filters:
         active = sum(bool(st.session_state.get(f"timeline_filter_{c}")) for c in filters)
-        with st.expander("Filter by metadata" + (f" ({active} active)" if active else "")):
+        with st.expander("Filter by catalogue" + (f" ({active} active)" if active else "")):
             for column in filters:
                 values = available[column].fillna("(empty)").astype(str)
                 picked = st.multiselect(
@@ -73,7 +73,7 @@ def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | No
     matching = available[keep]
 
     if matching.empty:
-        st.info("No parameters match the metadata filters.")
+        st.info("No parameters match the catalogue filters.")
         return None
     types = dict(zip(matching["name"], matching["type"]))
     if st.session_state.get("timeline_parameter") not in types:
@@ -84,9 +84,6 @@ def _choose_parameter(available: pd.DataFrame, cfg: DashboardConfig) -> str | No
         format_func=lambda p: f"{p}  ({types[p] or 'no type'})",
         key="timeline_parameter",
     )
-    description = matching.set_index("name")["description"].get(parameter, "")
-    if description:
-        short_text(description)
     return parameter
 
 
@@ -322,14 +319,13 @@ def render(
     normal = data[SET_COLUMN] == BACKGROUND_LABEL  # the control charts' normal batches
     trend = _fit(data[date_col], y, cfg.trend) if opts["trend"] and numeric else None
 
-    direction = str(available.set_index("name").loc[parameter].get("direction", "both") or "both")
     charts = None
     if (opts["ewma"] or opts["cusum"]) and numeric:
         reference = normal
         if opts["reference"] is not None:
             start, end = opts["reference"]
             reference = normal & (data[date_col] >= start) & (data[date_col] < end + pd.Timedelta(days=1))
-        charts = control_charts(data[date_col], y, reference=reference, direction=direction, **cfg.spc)
+        charts = control_charts(data[date_col], y, reference=reference, **cfg.spc)
 
     table = context_table(data, cfg, y, trend, raw, charts)
     if model is not None:
@@ -358,8 +354,7 @@ def render(
             base = f"{charts.baseline} background batches{period}"
         else:
             base = f"first {charts.baseline} batches (too few background batches in the reference period)"
-        side = {"low": ", signals on the low side only", "high": ", signals on the high side only"}.get(charts.direction, "")
-        notes.append(f"EWMA/CUSUM normal from {base}: target {charts.target:.4g}, σ {charts.sigma:.4g}{scale}{side}")
+        notes.append(f"EWMA/CUSUM normal from {base}: target {charts.target:.4g}, σ {charts.sigma:.4g}{scale}")
     elif (opts["ewma"] or opts["cusum"]) and numeric:
         notes.append("too few batches for EWMA/CUSUM")
 

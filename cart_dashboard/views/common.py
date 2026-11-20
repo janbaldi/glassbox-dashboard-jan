@@ -63,7 +63,7 @@ class Ctx:
         return name + self.units.get(name, "")
 
     def meta(self, column: str | None) -> pd.Series:
-        """A metadata column by parameter name (empty strings when the metadata has no such column)."""
+        """A catalogue column by parameter name (empty strings when the catalogue has no such column)."""
         if column is None or column not in self.params:
             return pd.Series("", index=self.params["name"])
         return self.params.set_index("name")[column].fillna("").astype(str)
@@ -92,8 +92,8 @@ def _as_of(key: tuple, _df: pd.DataFrame, _s: M.Settings, _cfg: DashboardConfig)
 
 
 @st.cache_data(show_spinner="Comparing the recent window with the baseline…")
-def _score(key: tuple, filters: tuple, _values, _dates, _recent, _baseline, _spc, _directions, _period) -> pd.DataFrame:
-    return M.scorecard(_values, _dates, _recent, _baseline, _spc, _directions, _period)
+def _score(key: tuple, filters: tuple, _values, _dates, _recent, _baseline, _spc, _period) -> pd.DataFrame:
+    return M.scorecard(_values, _dates, _recent, _baseline, _spc, _period)
 
 
 @st.cache_data(show_spinner="Fitting trend…")
@@ -187,8 +187,7 @@ def context(title: str, caption: str = "") -> Ctx:
     period = (inside & rows) | baseline
     filters = (str(pd.Timestamp(start).date()), str(pd.Timestamp(end).date()), recent_days, tuple(sites), reman,
                tuple(str(x.date()) for x in fixed) if fixed else None)
-    directions = dict(zip(available["name"], available["direction"])) if "direction" in available else None
-    score = _score(key, filters, values, dates, recent, baseline, cfg.spc, directions, period)
+    score = _score(key, filters, values, dates, recent, baseline, cfg.spc, period)
     b_start, b_end = fixed if fixed else (pd.Timestamp(start), recent_start - pd.Timedelta(days=1))
     ctx = Ctx(cfg, df, available, s, values, units, key, as_of, pd.Timestamp(start), pd.Timestamp(end), recent_start,
               b_start, b_end, fixed is not None, rows, period, recent, baseline, score, filters)
@@ -364,9 +363,6 @@ def parameter_detail(ctx: Ctx, name: str, key: str) -> None:
                      help="Open the investigation page on this parameter: the recent window as the batches of "
                           "interest, the baseline as the background."):
         investigate(ctx, name)
-    description = ctx.meta("description").get(name, "")
-    if description:
-        st.caption(description if len(description) <= 220 else description[:217].rsplit(" ", 1)[0] + "…")
 
     row = st.container(horizontal=True, gap="small")
     st.session_state.setdefault(f"mon_trend_{key}", True)
@@ -385,8 +381,7 @@ def parameter_detail(ctx: Ctx, name: str, key: str) -> None:
     trend = _fit(data[date_col], y, cfg.trend) if trend_on else None
     charts = None
     if ewma_on or cusum_on:
-        direction = ctx.meta("direction").get(name, "both") or "both"
-        charts = control_charts(data[date_col], y, reference=ctx.baseline[ctx.period], direction=direction, **cfg.spc)
+        charts = control_charts(data[date_col], y, reference=ctx.baseline[ctx.period], **cfg.spc)
     color = order = None
     if by_site:
         color = data[cfg.col("site")].astype("string").fillna("(no site)")

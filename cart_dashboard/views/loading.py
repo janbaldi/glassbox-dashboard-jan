@@ -1,4 +1,4 @@
-"""Loading the config, the batch data and the parameter metadata once, for every page."""
+"""Loading the config, the batch data and the parameter catalogue once, for every page."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def _load(config_path: str, mtimes: tuple[float, ...]) -> tuple[DashboardConfig,
 
 
 def load() -> tuple[DashboardConfig, pd.DataFrame, pd.DataFrame, tuple]:
-    """(config, batches, parameter metadata, cache key). Stops the page with the error when a file is wrong.
+    """(config, batches, parameter catalogue, cache key). Stops the page with the error when a file is wrong.
 
     The cache key (config path and the files' modification times) changes
     when a file changes; pages put it in the keys of their own caches.
@@ -25,7 +25,7 @@ def load() -> tuple[DashboardConfig, pd.DataFrame, pd.DataFrame, tuple]:
     config_path = resolve_config_path()
     try:
         cfg = load_config(config_path)
-        files = [config_path, cfg.csv_path, cfg.parameters_path] + ([cfg.catalog_path] if cfg.catalog_path else [])
+        files = [config_path, cfg.csv_path, cfg.parameters_path]
         mtimes = tuple(f.stat().st_mtime if f.exists() else 0.0 for f in files)
         cfg, df, params = _load(str(config_path), mtimes)
     except ConfigError as exc:

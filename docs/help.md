@@ -164,7 +164,7 @@ parameter and its direction; the status says where to look.
 Click a row of a scorecard. Under the table:
 
 - the parameter's name with its process day, functional type and variation
-  source, and its description;
+  source;
 - the **trend plot**: every batch of the period by manufacturing date, the
   recent window shaded in light blue, with a time-period slider under it.
   The switches above it add the **Trend fit** (on by default), the **EWMA**
@@ -540,20 +540,16 @@ from the pick list.
 
 ### Parameter
 
-**Parameter** lists every parameter that is in the metadata and has a column
-in the data, with its value type. Its title says how many are listed, for
+**Parameter** lists every parameter that is in the catalogue, is not marked
+*Exclude* there, and has a column in the data, with its value type. Its title says how many are listed, for
 example *Parameter (12 of 619)*.
 
 - **To find a parameter**, click the list and type: it keeps the names that
   contain what you typed.
-- **Filter by metadata** folds open one filter per metadata column (in the
-  sample setup: Functional Type, Process Day, Actionable? and Variation
-  Source). Only parameters with one of the chosen values stay in the list;
+- **Filter by catalogue** folds open one filter per catalogue column (in the
+  sample setup: Functional Type, Process Day and Variation Source). Only parameters with one of the chosen values stay in the list;
   an empty filter means all values. The fold-out's title says how many
   filters are active.
-
-Under the list is the parameter's description from the metadata. A long
-description is shortened; hover over it to read all of it.
 
 ### Manufacturing site
 
@@ -628,15 +624,6 @@ so.
 With one **Manufacturing site** chosen, the reference batches are that
 site's.
 
-### Direction of concern
-
-Some parameters matter on one side only: low viability is a problem, high
-viability is not. The column *Direction of concern* of the parameter
-metadata file says which side matters: `low`, `high` or `both` (empty means
-both). EWMA and CUSUM then only signal on that side, and the CUSUM draws
-only that decision line. This halves the false alarms. The monitoring tabs
-use the same setting for their EWMA.
-
 ### Colour points by
 
 Colour the points by any non-numerical parameter (categorical or ordered),
@@ -663,7 +650,7 @@ filtered out. Batches of interest that are filtered out are listed under
 ### Axes and value types
 
 The x-axis is the manufacturing date. The y-axis depends on the parameter's
-value type in the metadata file:
+value type in the catalogue:
 
 - *numeric* and *ratio*: the value. A ratio written as `a:b` is plotted as
   a divided by b.
@@ -713,7 +700,7 @@ categories of the batches of interest.
 A line under the plot notes what was left out or how it was computed, for
 example `22 without value or date · trend (flat segments) breaks: none ·
 EWMA/CUSUM normal from 1321 background batches made 2024-01-03 to 2026-08-31:
-target 66.46, σ 9.516, signals on the low side only`. It can name:
+target 66.46, σ 9.516`. It can name:
 
 - batches without a value or a date;
 - values the transform cannot handle;
@@ -886,7 +873,7 @@ batch's value, the typical value in the background, its percentile and z-score.
 ### Clicking a feature
 
 Click a feature's name, bar or dot in either chart to plot that feature: it becomes the
-**Parameter** in the sidebar, and the metadata filters are cleared if they
+**Parameter** in the sidebar, and the catalogue filters are cleared if they
 would hide it. The plotted parameter is in bold on a light blue
 band in both charts. Greyed-out names are features the dashboard does not
 have as a parameter; clicking them shows a message instead.
@@ -1353,7 +1340,7 @@ points do not show.
 - **Control limits** lie at ±3 sigma, scaled for the averaging. They start
   narrow and widen to their final value over the first batches.
 - A **signal** (dark blue diamond) is a batch where the EWMA is outside the limits,
-  on the side that matters (the parameter's direction of concern).
+  on either side.
 
 Every plotted batch is judged against the reference batches. The weight and the limits are set in the `spc` section of the config
 file.
@@ -1404,7 +1391,7 @@ The dashboard reads its settings from a YAML file, in this order:
 3. `config/config.yaml`.
 
 The file in use is named at the bottom of the sidebar. Changes to the config,
-data or metadata files are picked up the next time the page updates.
+data or catalogue files are picked up the next time the page updates.
 
 ### Sections of the config file
 
@@ -1414,8 +1401,7 @@ data or metadata files are picked up the next time the page updates.
 | `columns` | Which column of the data holds each field the dashboard needs. Batch id and manufacturing date are required; site and re-manufacture are optional, and their filters disappear when left out. |
 | `column_groups` | Fields that offer a choice of columns. |
 | `remanufacture.true_values` | The values that mark a batch as re-manufactured, such as Y or Yes. |
-| `parameter_metadata` | The metadata CSV with one row per parameter, and which of its columns hold the name (`name_column`), value type (`type_column`), description (`description_column`), the metadata filters (`filter_columns`) and the direction of concern (`limit_columns.direction`). |
-| `parameter_metadata.catalog` | The parameter catalogue (Excel or CSV, one row per parameter; `path` and `name_column`). Its columns win over the same columns of the metadata CSV. Parameters it lists that the CSV does not have are added, without a value type: they are read as numbers when at least 80% of their values are numbers. |
+| `parameters` | The parameter catalogue (`path`: Excel or CSV, one row per parameter; `read_options` for reading it), and which of its columns hold the name (`name_column`), the value type (`type_column`), the catalogue filters (`filter_columns`) and the parameters to hide (`exclude_column`; see *Hiding parameters*). A parameter without a value type is read as numbers when at least 80% of its values are numbers. |
 | `monitor` | The monitoring tabs; see *The monitor section*. |
 | `trend` | The trend fit: `max_breaks`, `min_segment_size`, `bic_margin`, `outlier_iqr` (see *Trend fit*). |
 | `spc` | EWMA and CUSUM: `lam`, `L`, `k`, `h` (see *EWMA chart* and *CUSUM chart*), and `baseline`, the number of first batches used only when there are too few reference batches. |
@@ -1436,7 +1422,7 @@ All of it is optional; the defaults follow the names in the catalogue.
 | `closed_from` | The stage from which a batch has left the pipeline. | Shipped |
 | `key_cqas` | The key quality attributes of the Final product and CPV tabs. | eight final product attributes |
 | `material_sources` | The variation sources whose categorical parameters are lots (Materials tab). | Raw material / vector |
-| `group_columns` | The metadata columns holding `functional_type`, `process_day` and `variation_source`. | Functional Type, Process Day, Variation Source |
+| `group_columns` | The catalogue columns holding `functional_type`, `process_day` and `variation_source`. | Functional Type, Process Day, Variation Source |
 
 Stages, OOS columns and attributes that are not in the data are skipped.
 
@@ -1453,6 +1439,16 @@ Stages, OOS columns and attributes that are not in the data are skipped.
 A chart whose columns are missing is left out; a tab that cannot work
 without them says what it needs.
 
+### Hiding parameters
+
+Every parameter in the catalogue that is also a column in the data is shown.
+To hide one, put `Y` in its *Exclude* column in the catalogue (`Yes`, `True`,
+`1` and `X` work too; case does not matter). It then disappears from every
+page: the parameter lists, the monitoring tabs, the screens and the
+scorecards. Empty the cell to show it again. The config's
+`parameters.exclude_column` and `parameters.exclude_values` change the
+column and the values that hide.
+
 ### Data requirements
 
 The data has one row per batch. A batch id that appears more than once is
@@ -1464,8 +1460,8 @@ plotted.
 
 ### A monitoring tab says the parameters cannot be grouped
 
-The parameter metadata has no Functional Type or Process Day column. Add the
-catalogue under `parameter_metadata.catalog` in the config.
+The parameter catalogue has no Functional Type or Process Day column. Add them
+to the catalogue, or name its columns under `monitor.group_columns`.
 
 ### Every status is "Too few batches"
 
@@ -1528,9 +1524,9 @@ unchanged.
 
 ### The parameter I want is not in the list
 
-On the Investigation tab, clear the metadata filters. A parameter only
-appears when it is in the metadata file or the catalogue and has a column in
-the data. On the monitoring tabs, a parameter is on the tab its catalogue
+On the Investigation tab, clear the catalogue filters. A parameter only
+appears when it is in the catalogue, is not marked in its *Exclude* column,
+and has a column in the data. On the monitoring tabs, a parameter is on the tab its catalogue
 entry puts it on (see *Monitoring · The tabs*); the **All parameters** set on
 the CPV tab has every numerical one.
 

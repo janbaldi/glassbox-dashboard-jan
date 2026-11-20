@@ -20,15 +20,6 @@ def contains_all(texts: pd.Series, query: str) -> pd.Series:
     return hit
 
 
-def search_parameters(params: pd.DataFrame, query: str) -> pd.DataFrame:
-    """Parameters whose name or description contains every word; name matches first."""
-    if not words(query):
-        return params
-    in_name = contains_all(params["name"], query)
-    in_either = contains_all(params["name"] + " " + params["description"], query)
-    return pd.concat([params[in_name], params[in_either & ~in_name]])
-
-
 def highlight(markdown: str, query: str) -> str:
     """Wrap the query words in <mark>, leaving `code` spans alone."""
     found = sorted(set(words(query)), key=len, reverse=True)

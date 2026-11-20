@@ -12,7 +12,7 @@ streamlit run app.py
 
 Out of the box the app uses `config/config.yaml`, which points to a synthetic
 dataset of 2000 batches from January 2024 onwards (`data/sample_batches.csv.gz`).
-It has one column per parameter in `config/parameters.csv`. Regenerate it with
+It has one column per parameter in `catalog.xlsx`. Regenerate it with
 `python scripts/generate_sample_data.py`.
 
 ## Using your own data
@@ -27,9 +27,20 @@ It has one column per parameter in `config/parameters.csv`. Regenerate it with
    - `column_groups`: one parameter to a list of columns, for features that
      offer a choice of columns
    - `remanufacture.true_values`: the values that mark a batch as re-manufactured
-   - `parameter_metadata`: the CSV that lists the parameters the dashboard can
-     show, which of its columns hold the parameter name and value type, and
-     which columns (`filter_columns`) can be used to filter the parameter list
+   - `parameters`: the parameter catalogue (`catalog.xlsx`, Excel or CSV) that
+     lists the parameters the dashboard can show, which of its columns hold
+     the parameter name and value type, which columns (`filter_columns`) can
+     be used to filter the parameter list, and which column (`exclude_column`)
+     hides parameters
+
+### Hiding parameters
+
+Every parameter in the catalogue that is also a column in the data is shown.
+To hide one, put `Y` (or `Yes`, `True`, `1`, `X`; case does not matter) in
+its *Exclude* column in `catalog.xlsx`. It then disappears from every page:
+the parameter lists, the monitoring tabs and the screens. Leave the cell
+empty to show it again. `parameters.exclude_column` and
+`parameters.exclude_values` in the config change the column and the values.
 
 The app picks its config in this order: the `DASHBOARD_CONFIG` environment
 variable, then `config/config.local.yaml`, then `config/config.yaml`.
@@ -65,8 +76,7 @@ tab. The calculations are in `cart_dashboard/monitor.py`, checked in
 `tests/test_monitor.py`.
 
 The tabs group the parameters by the catalogue (`catalog.xlsx`: Functional
-Type, Process Day, Variation Source; `parameter_metadata.catalog` in the
-config) and find the OOS and date columns by name. The `monitor` section of
+Type, Process Day, Variation Source; `parameters` in the config) and find the OOS and date columns by name. The `monitor` section of
 the config overrides the defaults; see the help page.
 
 **Investigation tab** (why). One page; the sidebar holds the plot controls.
@@ -91,10 +101,9 @@ the config overrides the defaults; see the help page.
   of interest, batches of a glassbox run missing from the data, duplicated ids.
 - **Sidebar**:
   - *Parameter*: the parameter list can be searched by typing in it.
-    *Filter by metadata* narrows the list by the
-    metadata columns in `filter_columns` (Functional Type, Process Day and
-    Actionable? in the sample config). The chosen parameter's description is
-    shown under the list, shortened; hovering it shows the full text.
+    *Filter by catalogue* narrows the list by the
+    catalogue columns in `filter_columns` (Functional Type, Process Day and
+    Variation Source in the sample config).
   - *Display*: show only one manufacturing site, pick a transform (none, log
     or logit), and switch the trend fit, the EWMA chart and the CUSUM chart
     on or off. Any combination can be shown together.
@@ -143,12 +152,7 @@ The dashboard never imports glassbox; it only reads its files
 builds an ML dataset from the sample data and prints the glassbox command to
 run on it; then open `data/glassbox_demo/run`.
 
-### Direction of concern
-
-`parameter_metadata.limit_columns.direction` names the `parameters.csv`
-column that says which side of a parameter matters (low, high or both); EWMA
-and CUSUM then only signal on that side. A range slider under the plot
-zooms to a time period.
+A range slider under the plot zooms to a time period.
 
 ### Statistics
 
@@ -214,8 +218,7 @@ Both charts follow the plotted batches in manufacturing-date order
 The target and sigma come from the reference batches: the background batches
 of the reference period picked in the sidebar; their mean, and their average
 moving range divided by 1.128. Every batch, the batches of interest included,
-is judged against them. With a direction of concern in the metadata, signals are only raised
-on that side, and the dashboard lists when each shift began (the CUSUM's
+is judged against them. Signals are raised on both sides, and the dashboard lists when each shift began (the CUSUM's
 estimate) and which way.
 
 - EWMA is drawn over the points, with control limits at ±3 sigma that widen

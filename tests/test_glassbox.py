@@ -294,10 +294,11 @@ def test_statistics_section_follows_the_plot():
     assert "Comparing only batches made in the same quarter" in card
     assert "the model flags" in card  # the sidebar model check
 
-    at.button[[b.label for b in at.button].index("Screen all 619 parameters")].click().run()
+    screen = next(b.label for b in at.button if b.label.startswith("Screen all "))
+    at.button[[b.label for b in at.button].index(screen)].click().run()
     assert not at.exception
     assert any("differ with q < 0.05" in m.value for m in at.markdown)
 
     at.selectbox(key="timeline_site").select("SITE-A").run()  # other batches: the screen is asked for again
     assert not at.exception
-    assert "Screen all 619 parameters" in [b.label for b in at.button]
+    assert screen in [b.label for b in at.button]

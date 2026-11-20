@@ -21,8 +21,7 @@ def sample(tmp_path_factory):
     """The sample data and the catalogue, through a config of its own (config.yaml may point elsewhere)."""
     raw = yaml.safe_load((ROOT / "config" / "config.yaml").read_text())
     raw["data"]["csv_path"] = str(ROOT / "data" / "sample_batches.csv.gz")
-    raw["parameter_metadata"]["csv_path"] = str(ROOT / "config" / "parameters.csv")
-    raw["parameter_metadata"]["catalog"] = {"path": str(ROOT / "catalog.xlsx"), "name_column": "Parameter"}
+    raw["parameters"]["path"] = str(ROOT / "catalog.xlsx")
     path = tmp_path_factory.mktemp("cfg") / "config.yaml"
     path.write_text(yaml.safe_dump(raw))
     cfg = load_config(path)
@@ -31,14 +30,15 @@ def sample(tmp_path_factory):
     return path, cfg, df, params
 
 
-def test_catalogue_adds_columns_and_parameters(sample):
+def test_catalogue_gives_types_and_groups(sample):
     _, cfg, _, _ = sample
     params = load_parameters(cfg)
     assert "Variation Source" in params.columns
     row = params.set_index("name").loc["FP Flow CAR+ (%)"]
     assert (row["type"], row["Process Day"], row["Variation Source"]) == ("numeric", "Final Product", "Outcome")
-    only_catalogue = params.set_index("name").loc["Lactate_yield_on_glucose_D6"]  # not in parameters.csv
-    assert only_catalogue["type"] == "" and only_catalogue["Functional Type"] == "Metabolism and feeding"
+    derived = params.set_index("name").loc["Lactate_yield_on_glucose_D6"]  # no value type: inferred from the data
+    assert derived["type"] == "" and derived["Functional Type"] == "Metabolism and feeding"
+    assert "Post Thaw FLOW CD3+ (%)" not in set(params["name"])  # in the data, not in the catalogue
 
 
 def test_windows_split_the_period():

@@ -42,9 +42,9 @@ column_groups:
     - Date of Apheresis Collection
     - Date Apheresis Shipped to MFG
 
-# Parameter metadata: one row per parameter the dashboard can show. The names
-# in `name_column` must match column names in the data; parameters missing
-# from the data are left out of the dropdowns.
+# The parameter catalogue: one row per parameter the dashboard can show (Excel
+# or CSV). The names in `name_column` must match column names in the data;
+# parameters missing from the data are left out of the dropdowns.
 #
 # `type_column` decides how a parameter is plotted:
 #   numeric, ratio             numbers on the y-axis ("a:b" ratios become a / b)
@@ -53,21 +53,27 @@ column_groups:
 #                              times: hour of day)
 #   categorical                one row per category
 #   [a,b,c]                    ordered categories, in the listed order
-#   anything else              numeric if the values are numbers, else categorical
-parameter_metadata:
-  csv_path: config/parameters.csv
-  read_csv_options:
-    sep: ";"
-    encoding: utf-8-sig
+#   empty or anything else     numeric if the values are numbers, else categorical
+#
+# The monitoring pages group the parameters by the catalogue's Functional Type,
+# Process Day and Variation Source columns (see `monitor.group_columns`).
+parameters:
+  path: catalog.xlsx
+  # Extra keyword arguments passed to pandas.read_excel / read_csv (optional),
+  # e.g. {sheet_name: Catalogue} or {sep: ";"}.
+  read_options: {}
   name_column: Parameter
   type_column: Value Type
-  # Free text searched along with the name in the parameter search (optional).
-  description_column: Description
-  # Metadata columns offered as filters on the parameter list (optional).
+  # Catalogue columns offered as filters on the parameter list (optional).
   filter_columns:
     - Functional Type
     - Process Day
-    - Actionable?
+    - Variation Source
+  # Parameters to hide (optional): a row with one of `exclude_values` in this
+  # column (case does not matter) is left out of every page of the dashboard.
+  # Leave the column empty for the parameters you want to see.
+  exclude_column: Exclude
+  exclude_values: ["Y", "Yes", "True", "1", "X"]
 
 # How to interpret the values in the `remanufacture` column. A batch is
 # considered re-manufactured when its value (compared case-insensitively as

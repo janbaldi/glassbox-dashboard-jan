@@ -1,4 +1,4 @@
-"""Monitoring: limits, reference batches, signal episodes and the plot."""
+"""Monitoring: the catalogue, reference batches, signal episodes and the plot."""
 
 from __future__ import annotations
 
@@ -30,18 +30,17 @@ def setup(tmp_path: Path):
     }).to_csv(csv, index=False)
     meta = tmp_path / "p.csv"
     meta.write_text(
-        "Parameter;Value Type;LSL;USL;LAL;UAL;Dir\n"
-        "CAR;numeric;45;;50;;low\n"
-        "OOS;categorical;;;;;\n"
+        "Parameter;Value Type;Process Day;Hide\n"
+        "CAR;numeric;Final Product;\n"
+        "OOS;categorical;Final Product;no\n"
+        "CAR_OOS;categorical;Final Product; Yes\n"
+        "DOSE_OOS;;Final Product;x\n"
+        "NEW;;D3;\n"
     )
     raw = {
         "data": {"csv_path": str(csv)},
         "columns": {"batch_id": "ID", "manufacturing_date": "DT"},
-        "parameter_metadata": {
-            "csv_path": str(meta), "read_csv_options": {"sep": ";"},
-            "limit_columns": {"lower_spec": "LSL", "upper_spec": "USL", "lower_alert": "LAL",
-                              "upper_alert": "UAL", "direction": "Dir"},
-        },
+        "parameters": {"path": str(meta), "read_options": {"sep": ";"}, "exclude_column": "Hide"},
     }
     cfg_file = tmp_path / "c.yaml"
     cfg_file.write_text(yaml.safe_dump(raw))
@@ -49,15 +48,25 @@ def setup(tmp_path: Path):
     return cfg, load_batches(cfg), load_parameters(cfg), cfg_file, raw
 
 
-def test_config_reads_limits(setup):
+def test_catalogue_excludes_the_marked_parameters(setup):
     cfg, _, params, cfg_file, raw = setup
-    row = params.set_index("name").loc["CAR"]
-    assert (row["lower_spec"], row["lower_alert"], row["direction"]) == (45, 50, "low")
-    assert np.isnan(row["upper_spec"])
-    assert params.set_index("name").loc["OOS", "direction"] == "both"  # empty: both sides
-    raw["parameter_metadata"]["limit_columns"]["lower"] = "LSL"
+    assert params["name"].tolist() == ["CAR", "OOS", "NEW"]  # " Yes" and "x" are excluded, "no" is not
+    assert params["type"].tolist() == ["numeric", "categorical", ""]  # no value type: inferred later
+    assert params.set_index("name").loc["NEW", "Process Day"] == "D3"  # every catalogue column is kept
+    raw["parameters"]["exclude_values"] = ["no"]
     cfg_file.write_text(yaml.safe_dump(raw))
-    with pytest.raises(ConfigError, match="unknown key"):
+    assert load_parameters(load_config(cfg_file))["name"].tolist() == ["CAR", "CAR_OOS", "DOSE_OOS", "NEW"]
+    raw["parameters"]["exclude_column"] = "Skip"
+    cfg_file.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ConfigError, match="Skip"):
+        load_parameters(load_config(cfg_file))
+
+
+def test_the_old_metadata_section_is_refused(setup):
+    _, _, _, cfg_file, raw = setup
+    raw["parameter_metadata"] = {"csv_path": "config/parameters.csv"}
+    cfg_file.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ConfigError, match="no longer used"):
         load_config(cfg_file)
 
 
@@ -128,7 +137,7 @@ def test_app_monitors_with_control_charts():
     assert not at.exception
     captions = " ".join(c.value for c in at.caption)
     assert "EWMA/CUSUM normal from" in captions and "background batches" in captions
-    assert "signals on the low side only" in captions
+    assert "side only" not in captions  # the catalogue sets no direction: both sides signal
     assert any(e.label == "Statistics · batches of interest compared with background batches" for e in at.expander)
     assert "OOS" not in " ".join([captions] + [e.label for e in at.expander] + [s.label for s in at.selectbox])
     # A narrower reference period is used and named.
